@@ -32,7 +32,15 @@ export const getHomepageConfig = async () => {
 
     if (error) throw error;
 
-    return { config: data, error: null };
+    // Extract custom keys (collections_row, new_arrivals) from sections JSONB
+    const config = { ...data };
+    if (config.sections && typeof config.sections === 'object' && !Array.isArray(config.sections)) {
+      const { collections_row, new_arrivals, ...restSections } = config.sections;
+      if (collections_row) config.collections_row = collections_row;
+      if (new_arrivals) config.new_arrivals = new_arrivals;
+    }
+
+    return { config, error: null };
   } catch (error) {
     console.error('Get homepage config error:', error);
     return { config: null, error: error.message };
