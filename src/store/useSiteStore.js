@@ -39,11 +39,11 @@ export const useSiteStore = create(
       },
       splitContent: {
         collections: {
-          image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=800&auto=format&fit=crop',
+          image: '',
           title: 'COLLECTIONS',
         },
         newArrivals: {
-          image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=800&auto=format&fit=crop',
+          image: '',
           title: 'NEW ARRIVALS',
         }
       },
