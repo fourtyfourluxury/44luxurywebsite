@@ -8,9 +8,9 @@ import { toast } from '../../components/ui/ToastProvider';
 import ProductEditor from './ProductEditor';
 
 const STATUS_CFG = {
-  ACTIVE:   { dot: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Active' },
-  DRAFT:    { dot: 'bg-white/30',    text: 'text-white/40',    bg: 'bg-white/5',        label: 'Draft' },
-  SOLD_OUT: { dot: 'bg-red-400',     text: 'text-red-400',     bg: 'bg-red-500/10',     label: 'Sold Out' },
+  ACTIVE:      { dot: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Active' },
+  DRAFT:       { dot: 'bg-white/30',    text: 'text-white/40',    bg: 'bg-white/5',        label: 'Draft' },
+  'SOLD OUT':  { dot: 'bg-red-400',     text: 'text-red-400',     bg: 'bg-red-500/10',     label: 'Sold Out' },
 };
 
 function StatusPill({ status }) {
@@ -138,7 +138,7 @@ export default function ProductsManager() {
           <option value="">All Status</option>
           <option value="ACTIVE">Active</option>
           <option value="DRAFT">Draft</option>
-          <option value="SOLD_OUT">Sold Out</option>
+          <option value="SOLD OUT">Sold Out</option>
         </select>
         <select
           value={filterCat}
@@ -153,7 +153,7 @@ export default function ProductsManager() {
       </div>
 
       {/* Table */}
-      <div className="bg-[#141410] border border-white/[0.06] rounded-xl overflow-hidden">
+      <div className="bg-[#141410] border border-white/[0.06] rounded-xl">
         <table className="w-full">
           <thead>
             <tr className="border-b border-white/[0.06]">
