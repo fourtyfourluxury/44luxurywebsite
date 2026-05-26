@@ -43,18 +43,35 @@ export default function MediaLibrary() {
       : [BUCKETS_LIST.find(b => b.key === activeBucket)?.bucket].filter(Boolean);
 
     const allFiles = [];
-    for (const bucket of bucketsToLoad) {
-      const { data, error } = await supabase.storage.from(bucket).list('', { limit: 200, sortBy: { column: 'created_at', order: 'desc' } });
-      if (data) {
-        const withUrls = data
-          .filter(f => f.name && f.name !== '.emptyFolderPlaceholder')
-          .map(f => {
-            const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(f.name);
-            return { ...f, publicUrl, bucket, path: f.name };
-          });
-        allFiles.push(...withUrls);
+
+    // Helper: recursively list files in a bucket (including subfolders)
+    const listBucketFiles = async (bucket, folder = '') => {
+      const { data, error } = await supabase.storage.from(bucket).list(folder, {
+        limit: 200,
+        sortBy: { column: 'created_at', order: 'desc' },
+      });
+      if (!data) return;
+
+      for (const item of data) {
+        if (!item.name || item.name === '.emptyFolderPlaceholder') continue;
+
+        const itemPath = folder ? `${folder}/${item.name}` : item.name;
+
+        // If item has no metadata (or id is null), it's a folder — recurse into it
+        if (!item.metadata || item.id === null) {
+          await listBucketFiles(bucket, itemPath);
+        } else {
+          // It's a real file
+          const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(itemPath);
+          allFiles.push({ ...item, publicUrl, bucket, path: itemPath });
+        }
       }
+    };
+
+    for (const bucket of bucketsToLoad) {
+      await listBucketFiles(bucket);
     }
+
     setFiles(allFiles);
     setLoading(false);
   };

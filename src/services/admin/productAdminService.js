@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { deleteFileByUrl, isSupabaseStorageUrl } from '../storageService';
 
 /**
  * Admin Product Service
@@ -90,6 +91,26 @@ export const updateProduct = async (productId, updates) => {
 // Delete product
 export const deleteProduct = async (productId) => {
   try {
+    // Fetch product to get images before deleting
+    const { data: product } = await supabase
+      .from('products')
+      .select('images')
+      .eq('id', productId)
+      .single();
+
+    // Delete images from Supabase Storage
+    if (product?.images && Array.isArray(product.images)) {
+      for (const imageUrl of product.images) {
+        if (isSupabaseStorageUrl(imageUrl)) {
+          const deleteResult = await deleteFileByUrl(imageUrl);
+          if (!deleteResult.success) {
+            console.warn(`⚠️ Failed to delete product image from storage: ${imageUrl}`, deleteResult.error);
+          }
+        }
+      }
+      console.log('✅ Product images deleted from storage');
+    }
+
     const { error } = await supabase
       .from('products')
       .delete()
@@ -107,6 +128,35 @@ export const deleteProduct = async (productId) => {
 // Bulk delete products
 export const bulkDeleteProducts = async (productIds) => {
   try {
+    // Fetch products to get images before deleting
+    const { data: products } = await supabase
+      .from('products')
+      .select('images')
+      .in('id', productIds);
+
+    // Collect all image URLs
+    const allImages = [];
+    if (products) {
+      products.forEach(product => {
+        if (product.images && Array.isArray(product.images)) {
+          allImages.push(...product.images);
+        }
+      });
+    }
+
+    // Delete images from Supabase Storage
+    for (const imageUrl of allImages) {
+      if (isSupabaseStorageUrl(imageUrl)) {
+        const deleteResult = await deleteFileByUrl(imageUrl);
+        if (!deleteResult.success) {
+          console.warn(`⚠️ Failed to delete product image from storage: ${imageUrl}`, deleteResult.error);
+        }
+      }
+    }
+    if (allImages.length > 0) {
+      console.log(`✅ ${allImages.length} product images deleted from storage`);
+    }
+
     const { error } = await supabase
       .from('products')
       .delete()

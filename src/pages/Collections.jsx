@@ -29,7 +29,7 @@ export default function Collections() {
 
   const collectionProducts = products.filter(p =>
     p.status !== 'DRAFT' && (
-      p.collectionId === collection.id ||
+      p.collection_id === collection.id ||
       p.collection === collection.slug ||
       p.collections?.includes(collection.id)
     )
@@ -46,9 +46,9 @@ export default function Collections() {
     <div>
       {/* ── Hero ─────────────────────────────── */}
       <div className="relative h-[70vh] min-h-[480px] max-h-[720px] overflow-hidden bg-[#1c1c18]">
-        {collection.heroImage && (
+        {collection.hero_image && (
           <img
-            src={collection.heroImage}
+            src={collection.hero_image}
             alt={collection.name}
             className="w-full h-full object-cover opacity-70"
           />

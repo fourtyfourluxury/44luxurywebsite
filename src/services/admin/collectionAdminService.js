@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { deleteFileByUrl, isSupabaseStorageUrl } from '../storageService';
 
 /**
  * Collection Admin Service
@@ -137,6 +138,24 @@ export async function deleteCollection(collectionId) {
         success: false, 
         error: 'Cannot delete collection with products. Remove products first.' 
       };
+    }
+
+    // Fetch the collection to get the hero image URL before deleting
+    const { data: collection } = await supabase
+      .from('collections')
+      .select('hero_image')
+      .eq('id', collectionId)
+      .single();
+
+    // Delete hero image from Supabase Storage if it exists
+    if (collection?.hero_image && isSupabaseStorageUrl(collection.hero_image)) {
+      const deleteResult = await deleteFileByUrl(collection.hero_image);
+      if (!deleteResult.success) {
+        console.warn('⚠️ Failed to delete hero image from storage:', deleteResult.error);
+        // Continue with collection deletion even if image deletion fails
+      } else {
+        console.log('✅ Hero image deleted from storage');
+      }
     }
 
     const { error } = await supabase

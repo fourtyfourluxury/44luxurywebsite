@@ -10,6 +10,33 @@ const EMPTY = {
   ctaLabel: 'EXPLORE', ctaLink: '/shop', status: 'DRAFT',
 };
 
+// Convert snake_case DB data → camelCase for UI
+const fromDb = (col) => ({
+  ...col,
+  heroImage: col.hero_image || '',
+  heroHeadline: col.hero_headline || '',
+  heroSubheadline: col.hero_subheadline || '',
+  ctaLabel: col.cta_label || 'EXPLORE',
+  ctaLink: col.cta_link || '/shop',
+});
+
+// Convert camelCase UI data → snake_case for DB
+const toDb = (panel) => {
+  const payload = {
+    name: panel.name,
+    slug: panel.slug,
+    category: panel.category,
+    description: panel.description,
+    status: panel.status,
+    hero_image: panel.heroImage || null,
+    hero_headline: panel.heroHeadline || null,
+    hero_subheadline: panel.heroSubheadline || null,
+    cta_label: panel.ctaLabel || 'EXPLORE',
+    cta_link: panel.ctaLink || '/shop',
+  };
+  return payload;
+};
+
 const Field = ({ label, children }) => (
   <div>
     <label className="block text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">{label}</label>
@@ -46,7 +73,7 @@ export default function CollectionsManager() {
   const autoSlug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
   const openNew  = () => setPanel({ ...EMPTY, id: null });
-  const openEdit = (col) => setPanel({ ...col });
+  const openEdit = (col) => setPanel({ ...fromDb(col) });
 
   const handleImageUpload = async (files) => {
     if (!files?.length) return;
@@ -59,8 +86,7 @@ export default function CollectionsManager() {
   const handleSave = async () => {
     if (!panel.name?.trim()) { toast('Collection name is required', 'error'); return; }
     setSaving(true);
-    const payload = { ...panel, slug: panel.slug || autoSlug(panel.name) };
-    delete payload.products; // don't send nested data back
+    const payload = toDb({ ...panel, slug: panel.slug || autoSlug(panel.name) });
     const result = panel.id
       ? await updateCollection(panel.id, payload)
       : await createCollection(payload);
@@ -119,8 +145,8 @@ export default function CollectionsManager() {
             <div key={col.id} className="bg-[#141410] border border-white/[0.06] rounded-2xl overflow-hidden hover:border-white/10 transition-colors group">
               {/* Hero image */}
               <div className="aspect-[16/7] bg-white/5 relative overflow-hidden">
-                {col.heroImage
-                  ? <img src={col.heroImage} alt={col.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              {col.hero_image
+                  ? <img src={col.hero_image} alt={col.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   : <div className="w-full h-full flex items-center justify-center"><Layers size={28} className="text-white/10" /></div>}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <div className="absolute bottom-3 left-4">
