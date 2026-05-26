@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/authStore';
 const NAV_LINKS = [
   { label: 'HOME', href: '/' },
   { label: 'SHOP', href: '/shop', dropdownKey: 'shop' },
-  { label: 'COLLECTIONS', href: '/collections' },
+  { label: 'COLLECTIONS', href: '/collections', dropdownKey: 'collections' },
   { label: 'ABOUT', href: '/about' },
 ];
 
@@ -49,7 +49,7 @@ export default function Navbar() {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
-  const getBranches = useCallback((slug) => {
+  const getBranches = useCallback(() => {
     return [];
   }, [collections]);
 
@@ -119,19 +119,28 @@ export default function Navbar() {
                 </Link>
 
                 {/* Dropdown */}
-                {link.dropdownKey === 'shop' && activeDropdown === 'shop' && (
+                {link.dropdownKey && activeDropdown === link.dropdownKey && (
                   <div
                     className="absolute top-full left-1/2 -translate-x-1/2 bg-[#fcf9f3] min-w-[200px] shadow-2xl z-50 py-5"
-                    onMouseEnter={() => handleDropdownEnter('shop')}
+                    onMouseEnter={() => handleDropdownEnter(link.dropdownKey)}
                     onMouseLeave={handleDropdownLeave}
                   >
-                    {shopSubLinks.map(sub => (
+                    {link.dropdownKey === 'shop' && shopSubLinks.map(sub => (
                       <Link
                         key={sub.label}
                         to={sub.href}
                         className="block px-6 py-2.5 font-plex text-sm text-[#5f5e5e] hover:text-[#1c1c18] hover:pl-8 transition-all duration-200"
                       >
                         {sub.label}
+                      </Link>
+                    ))}
+                    {link.dropdownKey === 'collections' && namedCollections.map(col => (
+                      <Link
+                        key={col.id}
+                        to={`/collections/${col.slug}`}
+                        className="block px-6 py-2.5 font-plex text-sm text-[#5f5e5e] hover:text-[#1c1c18] hover:pl-8 transition-all duration-200"
+                      >
+                        {col.name}
                       </Link>
                     ))}
                   </div>
