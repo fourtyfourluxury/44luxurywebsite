@@ -10,6 +10,7 @@ import { useAuthStore } from './store/authStore';
 // ── Storefront Pages ─────────────────────────────────────────
 import Home from './pages/Home';
 import Shop from './pages/Shop';
+import AllCollections from './pages/AllCollections';
 import Collections from './pages/Collections';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
@@ -108,7 +109,8 @@ function App() {
                 <Route path="/shop/:collectionSlug/:branchSlug" element={<Shop />} />
 
                 {/* Collections */}
-              <Route path="/collections/:slug" element={<Collections />} />
+                <Route path="/collections" element={<AllCollections />} />
+                <Route path="/collections/:slug" element={<Collections />} />
 
               {/* Products */}
               <Route path="/product/:id" element={<ProductDetail />} />
