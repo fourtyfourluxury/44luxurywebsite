@@ -18,7 +18,17 @@ export async function getHomepageConfig() {
 
     if (error) throw error;
 
-    return { data, error: null };
+    // Extract custom keys stored inside sections JSONB back to top-level
+    const config = { ...data };
+    if (config.sections && typeof config.sections === 'object' && !Array.isArray(config.sections)) {
+      const { collections_row, new_arrivals, ...restSections } = config.sections;
+      if (collections_row) config.collections_row = collections_row;
+      if (new_arrivals) config.new_arrivals = new_arrivals;
+      // Keep any remaining section data
+      config._rawSections = restSections;
+    }
+
+    return { data: config, error: null };
   } catch (error) {
     console.error('Error fetching homepage config:', error);
     return { data: null, error: error.message };
@@ -32,15 +42,61 @@ export async function getHomepageConfig() {
  */
 export async function updateHomepageConfig(config) {
   try {
-    const { data, error } = await supabase
+    // Known database columns on homepage_config
+    const knownColumns = ['sections', 'featured_product_ids', 'announcement', 'hero_display_mode', 'hero_speed'];
+    
+    // Separate known columns from custom data (like collections_row, new_arrivals)
+    const dbUpdate = {};
+    const customData = {};
+    
+    for (const [key, value] of Object.entries(config)) {
+      if (knownColumns.includes(key)) {
+        dbUpdate[key] = value;
+      } else {
+        customData[key] = value;
+      }
+    }
+    
+    // If there's custom data, merge it into the sections JSONB field
+    if (Object.keys(customData).length > 0) {
+      // Fetch current config to merge
+      const { data: current } = await supabase
+        .from('homepage_config')
+        .select('sections')
+        .limit(1)
+        .single();
+      
+      const existingSections = (current?.sections && typeof current.sections === 'object' && !Array.isArray(current.sections))
+        ? current.sections 
+        : {};
+      
+      dbUpdate.sections = { ...existingSections, ...customData };
+    }
+    
+    dbUpdate.updated_at = new Date().toISOString();
+
+    // Try update first, then insert if no rows exist
+    const { data: existing } = await supabase
       .from('homepage_config')
-      .upsert({
-        id: 1, // Single row config
-        ...config,
-        updated_at: new Date().toISOString(),
-      })
-      .select()
+      .select('id')
+      .limit(1)
       .single();
+
+    let data, error;
+    if (existing) {
+      ({ data, error } = await supabase
+        .from('homepage_config')
+        .update(dbUpdate)
+        .eq('id', existing.id)
+        .select()
+        .single());
+    } else {
+      ({ data, error } = await supabase
+        .from('homepage_config')
+        .insert(dbUpdate)
+        .select()
+        .single());
+    }
 
     if (error) throw error;
 
