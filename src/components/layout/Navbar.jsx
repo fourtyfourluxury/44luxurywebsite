@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/authStore';
 const NAV_LINKS = [
   { label: 'HOME', href: '/' },
   { label: 'SHOP', href: '/shop', dropdownKey: 'shop' },
-  { label: 'COLLECTIONS', href: '/collections', dropdownKey: 'collections' },
+  { label: 'COLLECTIONS', href: '#', dropdownKey: 'collections' },
   { label: 'ABOUT', href: '/about' },
 ];
 
@@ -111,12 +111,20 @@ export default function Navbar() {
                 onMouseEnter={() => link.dropdownKey && handleDropdownEnter(link.dropdownKey)}
                 onMouseLeave={handleDropdownLeave}
               >
-                <Link
-                  to={link.href}
-                  className="font-grotesk text-[11px] font-semibold uppercase tracking-[0.13em] text-[#a8a8a0] hover:text-[#fcf9f3] transition-colors whitespace-nowrap py-1 border-b border-transparent hover:border-[#fcf9f3]/20"
-                >
-                  {link.label}
-                </Link>
+                {link.href === '#' ? (
+                  <span
+                    className="font-grotesk text-[11px] font-semibold uppercase tracking-[0.13em] text-[#a8a8a0] hover:text-[#fcf9f3] transition-colors whitespace-nowrap py-1 border-b border-transparent hover:border-[#fcf9f3]/20 cursor-default"
+                  >
+                    {link.label}
+                  </span>
+                ) : (
+                  <Link
+                    to={link.href}
+                    className="font-grotesk text-[11px] font-semibold uppercase tracking-[0.13em] text-[#a8a8a0] hover:text-[#fcf9f3] transition-colors whitespace-nowrap py-1 border-b border-transparent hover:border-[#fcf9f3]/20"
+                  >
+                    {link.label}
+                  </Link>
+                )}
 
                 {/* Dropdown */}
                 {link.dropdownKey && activeDropdown === link.dropdownKey && (
