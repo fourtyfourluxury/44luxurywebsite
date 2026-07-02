@@ -18,7 +18,7 @@ export default function AnnouncementBar() {
         color: announcement.textColor || '#fcf9f3',
       }}
     >
-      <div className="animate-marquee">
+      <div className="animate-marquee-ltr">
         {ticker.map((msg, i) => (
           <span key={i} className="inline-flex items-center gap-0">
             <span className="font-grotesk text-[13px] font-black uppercase tracking-[0.25em]">

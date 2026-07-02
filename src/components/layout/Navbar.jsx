@@ -14,6 +14,7 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isDrawerClosing, setIsDrawerClosing] = useState(false);
   const [expandedSection, setExpandedSection] = useState(null);
 
   const searchRef = useRef(null);
@@ -34,12 +35,19 @@ export default function Navbar() {
     const handler = (e) => {
       if (e.key === 'Escape') {
         setSearchOpen(false);
-        setDrawerOpen(false);
+        if (drawerOpen) {
+          setIsDrawerClosing(true);
+          setTimeout(() => {
+            setDrawerOpen(false);
+            setIsDrawerClosing(false);
+            setExpandedSection(null);
+          }, 350);
+        }
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [drawerOpen]);
 
   // Lock body scroll when drawer is open
   useEffect(() => {
@@ -56,8 +64,12 @@ export default function Navbar() {
   };
 
   const closeDrawer = () => {
-    setDrawerOpen(false);
-    setExpandedSection(null);
+    setIsDrawerClosing(true);
+    setTimeout(() => {
+      setDrawerOpen(false);
+      setIsDrawerClosing(false);
+      setExpandedSection(null);
+    }, 350);
   };
 
   const DRAWER_LINKS = [
@@ -158,7 +170,7 @@ export default function Navbar() {
       {drawerOpen && (
         <div className="fixed inset-0 z-50 flex">
           {/* Drawer Panel */}
-          <div className="w-full max-w-[340px] bg-[#111110] h-full flex flex-col overflow-y-auto shadow-2xl animate-slide-in">
+          <div className={`w-full max-w-[340px] bg-[#4b0e1e] h-full flex flex-col overflow-y-auto shadow-2xl ${isDrawerClosing ? 'animate-slide-out-left' : 'animate-slide-in-left'}`}>
             {/* Drawer Header */}
             <div className="flex justify-between items-center px-6 py-6 border-b border-[#fcf9f3]/8">
               <Link to="/" onClick={closeDrawer} className="font-unica text-2xl text-[#fcf9f3] uppercase tracking-tighter hover:text-[#D4AF37] transition-colors">
@@ -186,7 +198,7 @@ export default function Navbar() {
                         />
                       </button>
                       {expandedSection === link.label && (
-                        <div className="bg-[#0d0d0c] py-2">
+                        <div className="bg-[#2c000b] py-2">
                           {link.children.map(child => (
                             <Link
                               key={child.href}
@@ -240,7 +252,7 @@ export default function Navbar() {
 
           {/* Backdrop */}
           <div
-            className="flex-1 bg-black/70 backdrop-blur-sm"
+            className={`flex-1 bg-black/70 backdrop-blur-sm transition-opacity duration-300 ${isDrawerClosing ? 'opacity-0' : 'opacity-100'}`}
             onClick={closeDrawer}
           />
         </div>
