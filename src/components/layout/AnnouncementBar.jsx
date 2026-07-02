@@ -21,7 +21,7 @@ export default function AnnouncementBar() {
       <div className="animate-marquee-ltr">
         {ticker.map((msg, i) => (
           <span key={i} className="inline-flex items-center gap-0">
-            <span className="font-grotesk text-[13px] font-black uppercase tracking-[0.25em]">
+            <span className="font-creepster text-xl uppercase tracking-wider">
               {msg}
             </span>
             <span className="mx-12 text-[#fcf9f3]/40 font-thin select-none">·</span>

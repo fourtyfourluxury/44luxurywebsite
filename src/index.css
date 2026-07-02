@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=Unica+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=Unica+One&family=Creepster&family=Permanent+Marker&family=Bangers&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -20,6 +20,9 @@ html, body {
 .font-unica   { font-family: 'Unica One', sans-serif; }
 .font-grotesk { font-family: 'Space Grotesk', sans-serif; }
 .font-plex    { font-family: 'IBM Plex Sans', sans-serif; }
+.font-creepster { font-family: 'Creepster', cursive; }
+.font-marker { font-family: 'Permanent Marker', cursive; }
+.font-bangers { font-family: 'Bangers', cursive; }
 
 /* ── Scrollbar hide ─────────────────────────────── */
 .scrollbar-hide {

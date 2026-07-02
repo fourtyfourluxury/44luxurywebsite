@@ -25,8 +25,8 @@ export const useSiteStore = create(
       announcement: {
         visible: true,
         messages: [
-          'BORN FROM PAIN, BUILT TO LAST',
-          'BORN FROM PAIN, BUILT TO LAST',
+          'BORN FROM PAIN. BUILT TO LAST',
+          'BORN FROM PAIN. BUILT TO LAST',
         ],
         bgColor: '#1c1c18',
         textColor: '#fcf9f3',
