@@ -31,7 +31,7 @@ export default function HeroSlider() {
   if (slides.length === 0) return null;
 
   return (
-    <section className="relative w-full h-screen min-h-[600px] overflow-hidden bg-[#1c1c18]">
+    <section className="relative w-full overflow-hidden bg-[#1c1c18]" style={{ aspectRatio: '4/5', minHeight: '600px' }}>
       {/* Slides Container */}
       <div 
         className="relative w-full h-full flex"
@@ -64,7 +64,7 @@ export default function HeroSlider() {
           const hasText = slide.headline || slide.subheadline || slide.ctaLabel;
           // Support both objectFit (cover/contain) and objectPosition (top/center/bottom)
           const fit = slide.objectFit || 'cover';
-          const position = slide.objectPosition || 'top';
+          const position = slide.objectPosition || 'center';
           const fitClass = fit === 'contain' ? 'object-contain' : 'object-cover';
 
           return (
@@ -76,32 +76,30 @@ export default function HeroSlider() {
                 className={`w-full h-full ${fitClass}`}
                 style={{ objectPosition: position }}
               />
-              {/* Overlay */}
-              <div className={`absolute inset-0 ${hasText ? 'bg-black/40' : 'bg-black/10'}`} />
+              {/* Subtle overlay — lightest possible to keep image clean like YL */}
+              <div className={`absolute inset-0 ${hasText ? 'bg-black/35' : 'bg-black/5'}`} />
 
-              {/* Text Content */}
+              {/* Text Content — anchored to bottom-center like YL Collectives */}
               {hasText && (
-                <div className="absolute inset-0 flex items-center justify-center text-center px-6 pointer-events-none">
-                  <div className="max-w-4xl mx-auto">
-                    {slide.subheadline && (
-                      <p className="font-grotesk font-semibold text-xs md:text-sm uppercase tracking-[0.2em] text-[#fcf9f3]/80 mb-4 animate-fade-in">
-                        {slide.subheadline}
-                      </p>
-                    )}
-                    {slide.headline && (
-                      <h1 className="font-unica text-5xl md:text-7xl lg:text-9xl uppercase tracking-tighter leading-[0.9] text-[#fcf9f3] mb-8 animate-fade-in drop-shadow-2xl">
-                        {slide.headline}
-                      </h1>
-                    )}
-                    {slide.ctaLabel && (
-                      <Link
-                        to={slide.ctaLink || '/shop'}
-                        className="inline-block bg-[#fcf9f3] text-[#1c1c18] font-grotesk font-bold uppercase tracking-widest text-xs md:text-sm px-8 py-4 hover:bg-[#D4AF37] transition-colors pointer-events-auto shadow-xl"
-                      >
-                        {slide.ctaLabel}
-                      </Link>
-                    )}
-                  </div>
+                <div className="absolute bottom-0 left-0 right-0 pb-12 md:pb-16 flex flex-col items-center text-center px-6 pointer-events-none">
+                  {slide.subheadline && (
+                    <p className="font-grotesk font-semibold text-xs md:text-sm uppercase tracking-[0.25em] text-[#fcf9f3]/90 mb-3 animate-fade-in">
+                      {slide.subheadline}
+                    </p>
+                  )}
+                  {slide.headline && (
+                    <h1 className="font-unica text-6xl md:text-8xl lg:text-[9rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3] mb-7 animate-fade-in drop-shadow-2xl">
+                      {slide.headline}
+                    </h1>
+                  )}
+                  {slide.ctaLabel && (
+                    <Link
+                      to={slide.ctaLink || '/shop'}
+                      className="inline-block bg-[#1c1c18] text-[#fcf9f3] font-grotesk font-bold uppercase tracking-widest text-xs md:text-sm px-10 py-4 hover:bg-[#4b0e1e] transition-colors pointer-events-auto shadow-2xl border border-[#fcf9f3]/10"
+                    >
+                      {slide.ctaLabel}
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
