@@ -112,9 +112,15 @@ export default function Navbar() {
           {/* Center: Logo */}
           <Link
             to="/"
-            className="absolute left-1/2 -translate-x-1/2 font-unica text-[1.85rem] md:text-[2.1rem] tracking-tighter uppercase text-[#fcf9f3] hover:text-[#D4AF37] transition-colors duration-300 whitespace-nowrap"
+            className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center transition-opacity duration-300 hover:opacity-80"
+            aria-label="44 LUXURY Home"
           >
-            44 LUXURY
+            <img
+              src="/favicon.png"
+              alt="44 LUXURY"
+              className="h-10 md:h-12 w-auto object-contain"
+              style={{ filter: 'invert(1)' }}
+            />
           </Link>
 
           {/* Right: Icons */}
@@ -173,8 +179,8 @@ export default function Navbar() {
           <div className={`w-full max-w-[340px] bg-[#4b0e1e] h-full flex flex-col overflow-y-auto shadow-2xl ${isDrawerClosing ? 'animate-slide-out-left' : 'animate-slide-in-left'}`}>
             {/* Drawer Header */}
             <div className="flex justify-between items-center px-6 py-6 border-b border-[#fcf9f3]/8">
-              <Link to="/" onClick={closeDrawer} className="font-unica text-2xl text-[#fcf9f3] uppercase tracking-tighter hover:text-[#D4AF37] transition-colors">
-                44 LUXURY
+              <Link to="/" onClick={closeDrawer} className="flex items-center hover:opacity-80 transition-opacity">
+                <img src="/favicon.png" alt="44 LUXURY" className="h-9 w-auto object-contain" style={{ filter: 'invert(1)' }} />
               </Link>
               <button onClick={closeDrawer} className="text-[#a8a8a0] hover:text-[#fcf9f3] transition-colors p-1">
                 <X size={22} />
