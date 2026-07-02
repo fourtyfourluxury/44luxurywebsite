@@ -12,7 +12,7 @@ export default function AnnouncementBar() {
 
   return (
     <div
-      className="w-full overflow-hidden py-2.5 select-none"
+      className="w-full overflow-hidden py-3 select-none"
       style={{
         backgroundColor: announcement.bgColor || '#1c1c18',
         color: announcement.textColor || '#fcf9f3',
@@ -21,10 +21,10 @@ export default function AnnouncementBar() {
       <div className="animate-marquee">
         {ticker.map((msg, i) => (
           <span key={i} className="inline-flex items-center gap-0">
-            <span className="font-grotesk text-[11px] font-semibold uppercase tracking-[0.18em]">
+            <span className="font-grotesk text-[13px] font-black uppercase tracking-[0.25em]">
               {msg}
             </span>
-            <span className="mx-8 text-[#fcf9f3]/30 font-thin select-none">·</span>
+            <span className="mx-12 text-[#fcf9f3]/40 font-thin select-none">·</span>
           </span>
         ))}
       </div>

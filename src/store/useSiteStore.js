@@ -25,9 +25,8 @@ export const useSiteStore = create(
       announcement: {
         visible: true,
         messages: [
-          'FREE DELIVERY ON ORDERS ABOVE ₦150,000',
-          'NEW ARRIVALS — SS25 COLLECTION NOW LIVE',
-          'OFFICIAL STOCKIST: LAGOS · ABUJA · LONDON',
+          'BORN FROM PAIN, BUILT TO LAST',
+          'BORN FROM PAIN, BUILT TO LAST',
         ],
         bgColor: '#1c1c18',
         textColor: '#fcf9f3',

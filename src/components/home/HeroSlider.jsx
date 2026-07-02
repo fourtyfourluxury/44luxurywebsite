@@ -31,7 +31,7 @@ export default function HeroSlider() {
   if (slides.length === 0) return null;
 
   return (
-    <section className="relative w-full h-screen min-h-[600px] max-h-[900px] overflow-hidden bg-[#1c1c18]">
+    <section className="relative w-full h-screen min-h-[600px] overflow-hidden bg-[#1c1c18]">
       {/* Slides Container */}
       <div 
         className="relative w-full h-full flex"
