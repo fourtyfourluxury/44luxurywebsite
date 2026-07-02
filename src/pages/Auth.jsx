@@ -208,11 +208,7 @@ export default function Auth() {
               {loading ? (mode === 'register' ? 'Creating account...' : 'Signing in...') : mode === 'login' ? 'SIGN IN' : 'CREATE ACCOUNT'}
             </button>
 
-            {mode === 'login' && (
-              <p className="font-plex text-xs text-center text-[#5f5e5e]">
-                Admin: use <code className="bg-[#f1eee7] px-1">admin@44luxury.org</code> with the admin password
-              </p>
-            )}
+
           </form>
         </div>
       </div>

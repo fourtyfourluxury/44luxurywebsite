@@ -118,7 +118,7 @@ export default function Navbar() {
             <img
               src="/favicon.png"
               alt="44 LUXURY"
-              className="h-10 md:h-12 w-auto object-contain"
+              className="h-8 md:h-10 w-auto object-contain"
               style={{ filter: 'invert(1)' }}
             />
           </Link>
@@ -180,7 +180,7 @@ export default function Navbar() {
             {/* Drawer Header */}
             <div className="flex justify-between items-center px-6 py-6 border-b border-[#fcf9f3]/8">
               <Link to="/" onClick={closeDrawer} className="flex items-center hover:opacity-80 transition-opacity">
-                <img src="/favicon.png" alt="44 LUXURY" className="h-9 w-auto object-contain" style={{ filter: 'invert(1)' }} />
+                <img src="/favicon.png" alt="44 LUXURY" className="h-7 w-auto object-contain" style={{ filter: 'invert(1)' }} />
               </Link>
               <button onClick={closeDrawer} className="text-[#a8a8a0] hover:text-[#fcf9f3] transition-colors p-1">
                 <X size={22} />
