@@ -107,8 +107,8 @@ export default function Auth() {
       {/* Right panel — form */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-20">
         <div className="w-full max-w-[400px]">
-          <Link to="/" className="font-unica text-3xl uppercase tracking-tighter text-[#1c1c18] hover:text-[#4b0e1e] transition-colors block mb-12">
-            44 LUXURY
+          <Link to="/" className="flex justify-center mb-12 hover:opacity-80 transition-opacity">
+            <img src="/favicon.png" alt="44 LUXURY" className="h-8 w-auto object-contain" />
           </Link>
 
           <div className="flex mb-10 border-b border-[#1c1c18]/10">

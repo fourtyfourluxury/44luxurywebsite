@@ -49,8 +49,8 @@ const AdminLogin = () => {
       <div className="w-full max-w-md px-8">
         {/* Logo */}
         <div className="mb-16 text-center">
-          <Link to="/" className="inline-block">
-            <span className="font-unica text-4xl uppercase tracking-tighter text-bone">44 LUXURY</span>
+          <Link to="/" className="inline-block hover:opacity-80 transition-opacity">
+            <img src="/favicon.png" alt="44 LUXURY" className="h-10 w-auto object-contain mx-auto" style={{ filter: 'invert(1)' }} />
           </Link>
           <p className="font-plex text-concrete text-sm mt-3 uppercase tracking-widest">Admin Portal</p>
         </div>
