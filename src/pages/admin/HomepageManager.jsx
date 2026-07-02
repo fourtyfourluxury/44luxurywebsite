@@ -151,7 +151,7 @@ export default function HomepageManager() {
           <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.02] transition-colors" />
           {/* Header */}
           <div className="w-full px-8 mb-6 text-center">
-            <h2 className="font-unica text-3xl uppercase tracking-tighter text-white/70">YOUNG &amp; LIMITLESS</h2>
+            <h2 className="font-unica text-3xl uppercase tracking-tighter text-white/70">44 LUXURY</h2>
             <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold mt-1">CURATED CATEGORIES</p>
           </div>
           {/* 4 category tiles */}

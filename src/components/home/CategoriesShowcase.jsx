@@ -32,7 +32,7 @@ export default function CategoriesShowcase() {
         {/* Section Header — matches YL style */}
         <div className="mb-10 text-center">
           <h2 className="font-unica text-5xl md:text-6xl lg:text-7xl uppercase tracking-tighter text-[#1c1c18] leading-none">
-            YOUNG &amp; LIMITLESS
+            44 LUXURY
           </h2>
           <p className="font-grotesk text-[11px] font-bold uppercase tracking-[0.25em] text-[#a8a8a0] mt-3">
             CURATED CATEGORIES
