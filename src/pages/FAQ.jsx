@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import HeroBanner from '../components/common/HeroBanner';
+import { useSiteStore } from '../store/useSiteStore';
 
 const FAQS = [
   {
@@ -8,15 +10,6 @@ const FAQS = [
       { q: 'How long does delivery take?', a: 'Standard delivery within Nigeria takes 3–5 business days. Lagos orders typically arrive within 2 days. International orders are dispatched within 3 business days.' },
       { q: 'Do you offer free shipping?', a: 'Yes — free standard shipping on all orders above ₦150,000. Orders below this threshold incur a flat ₦5,000 shipping fee.' },
       { q: 'Can I track my order?', a: "Absolutely. Once dispatched, you'll receive a tracking link via email. You can also check your order status in your account dashboard." },
-    ],
-  },
-  {
-    category: 'RETURNS & EXCHANGES',
-    items: [
-      { q: 'What is your returns policy?', a: 'We accept returns within 14 days of delivery. Items must be unworn, unwashed, and returned with original tags attached. Sale items are final sale.' },
-      { q: 'How do I start a return?', a: 'Email returns@44luxury.com with your order number and reason for return. Our team will provide a prepaid return label within 48 hours.' },
-      { q: 'When will I receive my refund?', a: 'Refunds are processed within 5–7 business days of receiving your returned item. Funds typically appear in your account within 3 business days.' },
-      { q: 'Can I exchange for a different size?', a: 'Yes — for size exchanges, simply request an exchange in your return email and state your preferred size. Subject to stock availability.' },
     ],
   },
   {
@@ -35,21 +28,31 @@ const FAQS = [
       { q: 'What does "One of 44" mean?', a: '"One of 44" denotes our most limited-edition pieces — exclusively 44 units produced worldwide. These items ship with a certificate of authenticity.' },
     ],
   },
+  {
+    category: 'PAYMENTS',
+    items: [
+      { q: 'What payment methods do you accept?', a: 'We accept all major debit and credit cards via Paystack, as well as bank transfers. Crypto payments are available via NOWPayments for select orders.' },
+      { q: 'Is my payment information secure?', a: 'Yes. All card payments are processed by Paystack, a PCI-DSS compliant payment gateway. We never store card details on our servers.' },
+      { q: 'Can I pay in instalments?', a: 'Instalment payment options are being explored and will be announced when available. Follow us on social media to stay updated.' },
+    ],
+  },
 ];
 
 export default function FAQ() {
+  const { faqHero } = useSiteStore();
   const [openItem, setOpenItem] = useState(null);
   const [activeCategory, setActiveCategory] = useState(FAQS[0].category);
 
   return (
     <div className="min-h-screen bg-[#fcf9f3]">
-      {/* Header */}
-      <div className="bg-[#1c1c18] py-20 px-6">
-        <div className="max-w-[1440px] mx-auto">
-          <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#fcf9f3]/40 mb-3">HELP & INFORMATION</p>
-          <h1 className="font-unica text-7xl md:text-[9rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3]">FAQ</h1>
-        </div>
-      </div>
+      {/* Full-width editorial hero — FAQ heading sits inside the image */}
+      <HeroBanner
+        title={faqHero?.title || "FAQ"}
+        subtitle={faqHero?.subtitle || "HELP & INFORMATION"}
+        image={faqHero?.image || "/lifestyle-faq.jpg"}
+        overlayOpacity={0.5}
+        alignment="bottom-center"
+      />
 
       <div className="max-w-[1200px] mx-auto px-6 py-16">
         <div className="flex flex-col md:flex-row gap-12">

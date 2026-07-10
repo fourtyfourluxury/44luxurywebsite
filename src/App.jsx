@@ -21,6 +21,7 @@ import Account from './pages/Account';
 import About from './pages/About';
 import FAQ from './pages/FAQ';
 import Contact from './pages/Contact';
+import Shipping from './pages/Shipping';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import NotFound from './pages/NotFound';
@@ -41,6 +42,11 @@ import SettingsManager from './pages/admin/SettingsManager';
 import AdminCredentialsManager from './pages/admin/AdminCredentialsManager';
 
 function App() {
+  const siteLoading = useSiteStore(state => state.loading);
+  const authLoading = useAuthStore(state => state.loading);
+  const initialized = useSiteStore(state => state.initialized);
+  const siteError = useSiteStore(state => state.error);
+
   // Initialize store on app mount
   useEffect(() => {
     console.log('App mounted - initializing stores...');
@@ -66,6 +72,37 @@ function App() {
       }
     };
   }, []);
+
+  const isLoading = (siteLoading || authLoading || !initialized) && !siteError;
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-[#fcf9f3] flex flex-col items-center justify-center z-50">
+        <style>{`
+          @keyframes loading-bar {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+          }
+        `}</style>
+        <div className="text-center select-none">
+          <img 
+            src="/logo-black-icon.jpg" 
+            alt="44 LUXURY" 
+            className="w-24 h-24 md:w-32 md:h-32 object-contain mx-auto mb-6 animate-pulse"
+            style={{ mixBlendMode: 'multiply' }}
+          />
+          <div className="w-16 h-[1px] bg-[#1c1c18]/10 mx-auto overflow-hidden relative">
+            <div 
+              className="absolute top-0 left-0 h-full w-1/2 bg-[#1c1c18]"
+              style={{
+                animation: 'loading-bar 1.5s infinite linear'
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
@@ -129,6 +166,7 @@ function App() {
               <Route path="/about" element={<About />} />
               <Route path="/faq" element={<FAQ />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/shipping" element={<Shipping />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
 

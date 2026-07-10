@@ -1,22 +1,22 @@
 import HeroSlider from '../components/home/HeroSlider';
 import ProductGrid from '../components/home/ProductGrid';
 import CategoriesShowcase from '../components/home/CategoriesShowcase';
-import CollectionsBanner from '../components/home/CollectionsBanner';
+import StoreMap from '../components/home/StoreMap';
 
 export default function Home() {
   return (
     <>
-      {/* 1. Full-viewport hero image / slider */}
+      {/* 1. Full-viewport CMS campaign carousel */}
       <HeroSlider />
 
       {/* 2. 12-product 4-column NEW ARRIVALS grid */}
       <ProductGrid />
 
-      {/* 3. 4-tile category showcase (Sweatshirts, Jackets, Polo, Accessories) */}
+      {/* 3. 4-tile category showcase */}
       <CategoriesShowcase />
 
-      {/* 4. 44 LUXURY Collections editorial banner */}
-      <CollectionsBanner />
+      {/* 4. Flagship store interactive map */}
+      <StoreMap />
     </>
   );
 }

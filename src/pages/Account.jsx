@@ -770,7 +770,7 @@ const PrivacyNotice = () => (
       { title: 'HOW WE USE YOUR DATA', body: 'Your data is used to process orders, communicate with you, and (with your consent) send marketing communications.' },
       { title: 'DATA SHARING', body: 'We do not sell your personal data. We share information with trusted partners only where necessary to fulfil orders.' },
       { title: 'YOUR RIGHTS', body: 'You have the right to access, correct, or delete your personal data. Contact privacy@44luxury.com to exercise these rights.' },
-      { title: 'CONTACT', body: '44LUXURY Nigeria Ltd, 44 Bourdillon Road, Ikoyi, Lagos. privacy@44luxury.com' },
+      { title: 'CONTACT', body: '44LUXURY Nigeria Ltd, Shariff Plaza, Banex Wuse 2, Shop C426, Abuja, Nigeria. privacy@44luxury.com' },
     ].map(s => (
       <div key={s.title} className="border-b border-[#1c1c18]/10 pb-5">
         <p className="font-grotesk font-bold text-xs uppercase tracking-widest text-[#1c1c18] mb-2">{s.title}</p>

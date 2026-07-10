@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Upload, Search, Grid, List, Copy, Trash2, X, ImageIcon, Film } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { uploadFile, deleteFile, BUCKETS } from '../../services/storageService';
+import { uploadFile, deleteFile, moveFile, BUCKETS } from '../../services/storageService';
 import { toast } from '../../components/ui/ToastProvider';
 
 const BUCKETS_LIST = [
@@ -32,6 +32,99 @@ export default function MediaLibrary() {
   const [dragging, setDragging]   = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const fileRef = useRef();
+
+  // Rename, Replace, Alt Text States
+  const replaceFileRef = useRef();
+  const [replacing, setReplacing] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [altTexts, setAltTexts] = useState(() => {
+    try {
+      const stored = localStorage.getItem('44luxury_media_alt_text');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const saveAltText = (url, val) => {
+    const updated = { ...altTexts, [url]: val };
+    setAltTexts(updated);
+    localStorage.setItem('44luxury_media_alt_text', JSON.stringify(updated));
+    toast('Alt text saved for SEO!', 'success');
+  };
+
+  const handleRename = async () => {
+    if (!renameValue || renameValue === selected.name) return;
+    setRenaming(true);
+    toast('Renaming file...', 'info');
+    try {
+      const dir = selected.path.includes('/') ? selected.path.split('/').slice(0, -1).join('/') + '/' : '';
+      const ext = selected.name.split('.').pop();
+      const baseName = renameValue.split('.').slice(0, -1).join('.') || renameValue;
+      const cleanBase = baseName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      const newPath = `${dir}${cleanBase}.${ext}`;
+
+      const { success, url, path, error } = await moveFile(selected.path, newPath, selected.bucket);
+      if (success) {
+        toast('File renamed successfully!', 'success');
+        const updatedSelected = { ...selected, name: `${cleanBase}.${ext}`, path: newPath, publicUrl: url };
+        setSelected(updatedSelected);
+        
+        // Migrate alt text
+        if (altTexts[selected.publicUrl]) {
+          const updatedAlt = { ...altTexts, [url]: altTexts[selected.publicUrl] };
+          delete updatedAlt[selected.publicUrl];
+          setAltTexts(updatedAlt);
+          localStorage.setItem('44luxury_media_alt_text', JSON.stringify(updatedAlt));
+        }
+
+        loadFiles();
+      } else {
+        throw new Error(error);
+      }
+    } catch (err) {
+      toast(err.message || 'Rename failed', 'error');
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const handleReplace = async (fileList) => {
+    if (!fileList?.length || !selected) return;
+    setReplacing(true);
+    toast('Replacing media file...', 'info');
+    try {
+      // 1. Delete original file
+      await deleteFile(selected.path, selected.bucket);
+      
+      // 2. Upload new file with exact same path/name
+      const { success, url, error } = await uploadFile(fileList[0], {
+        bucket: selected.bucket,
+        fileName: selected.name,
+        folder: selected.path.includes('/') ? selected.path.split('/').slice(0, -1).join('/') : ''
+      });
+
+      if (success) {
+        toast('Media replaced successfully!', 'success');
+        setSelected({ ...selected, publicUrl: url });
+        loadFiles();
+      } else {
+        throw new Error(error);
+      }
+    } catch (err) {
+      toast(err.message || 'Replace failed', 'error');
+    } finally {
+      setReplacing(false);
+    }
+  };
+
+  // Sync rename input when selected item changes
+  useEffect(() => {
+    if (selected) {
+      setRenameValue(selected.name);
+    }
+  }, [selected]);
 
   useEffect(() => { loadFiles(); }, [activeBucket]);
 
@@ -234,29 +327,76 @@ export default function MediaLibrary() {
 
         {/* Detail Panel */}
         {selected && (
-          <div className="w-64 bg-[#141410] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-4 shrink-0 overflow-y-auto">
+          <div className="w-72 bg-[#141410] border border-white/[0.06] rounded-2xl p-5 flex flex-col gap-5 shrink-0 overflow-y-auto">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">File Details</p>
+              <p className="text-[10px] font-semibold text-white/45 uppercase tracking-widest">Media Manager</p>
               <button onClick={() => setSelected(null)} className="text-white/20 hover:text-white/60 transition-colors"><X size={14} /></button>
             </div>
-            <div className="aspect-square rounded-xl overflow-hidden bg-white/5">
-              {isVideo(selected.name)
-                ? <div className="w-full h-full flex items-center justify-center"><Film size={32} className="text-white/20" /></div>
-                : <img src={selected.publicUrl} alt={selected.name} className="w-full h-full object-cover" />}
+            <div className="aspect-square rounded-xl overflow-hidden bg-white/5 relative group flex items-center justify-center">
+              {isVideo(selected.name) ? (
+                <video src={selected.publicUrl} className="w-full h-full object-cover" muted autoPlay loop />
+              ) : (
+                <img src={selected.publicUrl} alt={selected.name} className="w-full h-full object-cover" />
+              )}
             </div>
-            <div className="space-y-3">
-              {[['Filename', selected.name], ['Bucket', selected.bucket], ['Size', fmtSize(selected.metadata?.size)]].map(([l, v]) => (
-                <div key={l}><p className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-0.5">{l}</p><p className="text-[11px] text-white/60 break-all">{v}</p></div>
-              ))}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-1.5">Rename Filename</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={renameValue} 
+                    onChange={e => setRenameValue(e.target.value)} 
+                    className="flex-1 bg-[#0a0a08] border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] text-white outline-none focus:border-white/20"
+                  />
+                  <button 
+                    onClick={handleRename}
+                    disabled={renaming || !renameValue || renameValue === selected.name}
+                    className="px-3 py-1.5 bg-white text-black font-bold text-[10px] uppercase rounded-lg hover:bg-white/90 disabled:opacity-40 transition-opacity whitespace-nowrap"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-1.5">Alt Text (For SEO)</label>
+                <textarea 
+                  value={altTexts[selected.publicUrl] || ''} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setAltTexts(p => ({ ...p, [selected.publicUrl]: val }));
+                  }}
+                  onBlur={e => saveAltText(selected.publicUrl, e.target.value)}
+                  placeholder="Describe this media for search engines..."
+                  rows={2}
+                  className="w-full bg-[#0a0a08] border border-white/10 rounded-lg p-2.5 text-[11px] text-white placeholder-white/20 outline-none focus:border-white/20 resize-none"
+                />
+              </div>
+
+              <div className="border-t border-white/[0.05] pt-3 space-y-2 text-[10px]">
+                <div className="flex justify-between"><span className="text-white/30">Bucket:</span><span className="text-white/60">{selected.bucket}</span></div>
+                <div className="flex justify-between"><span className="text-white/30">Size:</span><span className="text-white/60">{fmtSize(selected.metadata?.size)}</span></div>
+              </div>
             </div>
-            <button onClick={() => copyUrl(selected.publicUrl)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#c9a96e]/10 text-[#c9a96e] rounded-xl text-[11px] font-bold hover:bg-[#c9a96e]/20 transition-colors">
-              <Copy size={13} /> Copy URL
-            </button>
-            <button onClick={() => setDeleteTarget(selected)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-500/5 text-red-400 rounded-xl text-[11px] font-bold hover:bg-red-500/10 transition-colors border border-red-500/10">
-              <Trash2 size={13} /> Delete
-            </button>
+
+            <div className="space-y-2 mt-auto">
+              <button onClick={() => copyUrl(selected.publicUrl)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 text-white/70 rounded-xl text-[11px] font-semibold hover:bg-white/10 transition-colors border border-white/10">
+                <Copy size={12} /> Copy URL
+              </button>
+              
+              <button onClick={() => replaceFileRef.current?.click()} disabled={replacing}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#c9a96e]/10 text-[#c9a96e] rounded-xl text-[11px] font-bold hover:bg-[#c9a96e]/20 transition-colors border border-[#c9a96e]/20">
+                <Upload size={12} /> {replacing ? 'Replacing...' : 'Replace Media'}
+              </button>
+              <input ref={replaceFileRef} type="file" className="hidden" accept="image/*,video/*" onChange={e => handleReplace(e.target.files)} />
+
+              <button onClick={() => setDeleteTarget(selected)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-500/5 text-red-400 rounded-xl text-[11px] font-bold hover:bg-red-500/10 transition-colors border border-red-500/10">
+                <Trash2 size={12} /> Delete Media
+              </button>
+            </div>
           </div>
         )}
       </div>

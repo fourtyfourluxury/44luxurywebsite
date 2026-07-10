@@ -105,7 +105,7 @@ export default function SettingsManager() {
             <Input value={settings?.contact_phone || ''} onChange={e => set('contact_phone', e.target.value)} placeholder="+234 800 000 0044" />
           </Field>
           <Field label="Store Address">
-            <Input value={settings?.store_address || ''} onChange={e => set('store_address', e.target.value)} placeholder="44 Bourdillon Road, Ikoyi, Lagos" />
+            <Input value={settings?.store_address || ''} onChange={e => set('store_address', e.target.value)} placeholder="Shariff Plaza, Banex Wuse 2, Shop C426, Abuja, Nigeria" />
           </Field>
           <Field label="Instagram Handle">
             <Input value={settings?.instagram || ''} onChange={e => set('instagram', e.target.value)} placeholder="@44luxury" />

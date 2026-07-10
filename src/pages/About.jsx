@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import HeroBanner from '../components/common/HeroBanner';
 
 const TIMELINE = [
   { year: '2019', event: 'Founded in Lagos, Nigeria by the 44LUXURY creative collective.' },
@@ -20,25 +21,15 @@ const VALUES = [
 export default function About() {
   return (
     <div>
-      {/* ── Hero ─────────────────────────────────────── */}
-      <div className="relative h-screen min-h-[600px] max-h-[900px] overflow-hidden bg-[#1c1c18]">
-        <img
-          src="https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=2070&auto=format&fit=crop"
-          alt="44LUXURY Brand"
-          className="w-full h-full object-cover opacity-50"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#1c1c18] via-[#1c1c18]/20 to-transparent" />
-        <div className="absolute bottom-0 left-0 px-8 md:px-16 pb-20 max-w-[1440px] w-full">
-          <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#fcf9f3]/40 mb-5">
-            EST. 2019 — LAGOS, NIGERIA
-          </p>
-          <h1 className="font-unica text-7xl md:text-[9rem] lg:text-[11rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3]">
-            BORN FROM PAIN.<br />BUILT TO LAST.
-          </h1>
-        </div>
-      </div>
+      <HeroBanner
+        title={<>BORN FROM PAIN.<br />BUILT TO LAST.</>}
+        subtitle="EST. 2019 — LAGOS, NIGERIA"
+        image="/lifestyle-about.jpg"
+        overlayOpacity={0.42}
+        alignment="bottom-center"
+      />
 
-      {/* ── Mission ──────────────────────────────────── */}
+      {/* ── Mission ───────────────────────────────────────────────── */}
       <section className="max-w-[1440px] mx-auto px-6 md:px-16 py-24">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-20 items-start">
           <div>
@@ -55,17 +46,18 @@ export default function About() {
               Every thread is deliberate. Every silhouette is architectural. Every drop is limited — because quality has no scale.
             </p>
           </div>
-          <div className="aspect-[3/4] bg-[#f1eee7] overflow-hidden">
+          <div className="bg-[#1c1c18] overflow-hidden" style={{ minHeight: '520px' }}>
             <img
-              src="https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?q=80&w=1440&auto=format&fit=crop"
-              alt="44LUXURY Construction"
-              className="w-full h-full object-cover"
+              src="/lifestyle-login.jpg"
+              alt="44LUXURY — Born From Pain jacket, confidence and premium craftsmanship"
+              className="w-full h-full object-contain"
+              loading="lazy"
             />
           </div>
         </div>
       </section>
 
-      {/* ── Values ───────────────────────────────────── */}
+      {/* ── Values ────────────────────────────────────────────────── */}
       <section className="bg-[#1c1c18] py-24 px-6">
         <div className="max-w-[1440px] mx-auto">
           <h2 className="font-unica text-5xl md:text-7xl uppercase tracking-tighter text-[#fcf9f3] mb-16 leading-none">
@@ -82,7 +74,7 @@ export default function About() {
         </div>
       </section>
 
-      {/* ── Timeline ─────────────────────────────────── */}
+      {/* ── Timeline ──────────────────────────────────────────────── */}
       <section className="max-w-[1440px] mx-auto px-6 py-24">
         <h2 className="font-unica text-5xl md:text-7xl uppercase tracking-tighter text-[#1c1c18] mb-16 leading-none">THE STORY</h2>
         <div className="flex flex-col gap-0">
@@ -95,7 +87,7 @@ export default function About() {
         </div>
       </section>
 
-      {/* ── CTA ──────────────────────────────────────── */}
+      {/* ── CTA ───────────────────────────────────────────────────── */}
       <section className="bg-[#fcf9f3] border-t border-[#1c1c18]/10 py-24 px-6 text-center">
         <h2 className="font-unica text-5xl md:text-7xl uppercase tracking-tighter text-[#1c1c18] mb-6">JOIN THE MOVEMENT</h2>
         <p className="font-plex text-sm text-[#5f5e5e] mb-10 max-w-sm mx-auto leading-relaxed">

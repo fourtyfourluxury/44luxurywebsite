@@ -14,7 +14,7 @@ export default function ProductGrid() {
   if (displayProducts.length === 0) return null;
 
   return (
-    <section className="py-16 md:py-24 px-5 md:px-8 max-w-[1440px] mx-auto">
+    <section className="py-20 md:py-28 px-5 md:px-8 lg:px-14 max-w-[1440px] mx-auto">
 
       {/* ── Section Header (YL style: big title + VIEW ALL right-aligned) ── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-10 pb-8 border-b border-[#1c1c18]/10">

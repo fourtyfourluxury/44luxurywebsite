@@ -90,10 +90,12 @@ export default function Auth() {
       {/* Left panel — image */}
       <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-[#1c1c18]">
         <img
-          src="https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=1440&auto=format&fit=crop"
-          alt="44LUXURY"
-          className="w-full h-full object-cover opacity-50"
+          src="/lifestyle-login.jpg"
+          alt="44LUXURY — Born From Pain collection, model wearing signature jacket"
+          className="w-full h-full object-cover object-center"
+          loading="lazy"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1c1c18]/80 via-transparent to-transparent" />
         <div className="absolute inset-0 flex flex-col justify-end p-16">
           <h2 className="font-unica text-6xl uppercase tracking-tighter text-[#fcf9f3] leading-tight mb-4">
             JOIN THE COLLECTIVE

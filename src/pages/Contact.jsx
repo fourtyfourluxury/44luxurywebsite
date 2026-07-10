@@ -1,34 +1,33 @@
 import { useState } from 'react';
 import { toast } from '../components/ui/ToastProvider';
 import { supabase } from '../lib/supabase';
+import HeroBanner from '../components/common/HeroBanner';
+import { useSiteStore } from '../store/useSiteStore';
 
 export default function Contact() {
+  const { contactHero, contactMap } = useSiteStore();
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Pull address and hours from shared contactMap CMS config
+  const address = contactMap?.address || 'Shariff Plaza, Banex Wuse 2, Shop C426, Abuja, Nigeria';
+  const hours   = contactMap?.hours   || 'Mon–Sat  10am–7pm · Sun  12pm–5pm';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      const { data, error } = await supabase.functions.invoke('submit-contact', {
-        body: {
-          name: form.name,
-          email: form.email,
-          subject: form.subject,
-          message: form.message,
-        },
+      const { error } = await supabase.functions.invoke('submit-contact', {
+        body: { name: form.name, email: form.email, subject: form.subject, message: form.message },
       });
-
       if (error) throw error;
-
       setSent(true);
-      toast('Message sent — we\'ll respond within 48 hours', 'success');
+      toast("Message sent — we'll respond within 48 hours", 'success');
       setForm({ name: '', email: '', subject: '', message: '' });
       setTimeout(() => setSent(false), 4000);
-    } catch (error) {
-      console.error('Error submitting contact form:', error);
+    } catch (err) {
+      console.error('Error submitting contact form:', err);
       toast('Failed to send message. Please try again.', 'error');
     } finally {
       setLoading(false);
@@ -37,25 +36,28 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen bg-[#fcf9f3]">
-      {/* Header */}
-      <div className="bg-[#1c1c18] py-20 px-6">
-        <div className="max-w-[1440px] mx-auto">
-          <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#fcf9f3]/40 mb-3">GET IN TOUCH</p>
-          <h1 className="font-unica text-7xl md:text-[9rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3]">CONTACT</h1>
-        </div>
-      </div>
+      {/* ── Full-width editorial hero ────────────────────────────── */}
+      <HeroBanner
+        title={contactHero?.title || 'CONTACT'}
+        subtitle={contactHero?.subtitle || 'GET IN TOUCH'}
+        image={contactHero?.image || '/lifestyle-contact.jpg'}
+        overlayOpacity={0.48}
+        alignment="bottom-center"
+      />
 
-      <div className="max-w-[1440px] mx-auto px-6 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
-          {/* Info */}
+      {/* ── Contact info + form ──────────────────────────────────── */}
+      <div className="max-w-[1440px] mx-auto px-6 md:px-12 lg:px-20 py-20 md:py-28">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 lg:gap-24">
+
+          {/* Info column */}
           <div>
-            <h2 className="font-unica text-4xl uppercase tracking-tighter text-[#1c1c18] mb-8">REACH OUT</h2>
+            <h2 className="font-unica text-4xl md:text-5xl uppercase tracking-tighter text-[#1c1c18] mb-10">REACH OUT</h2>
             <div className="flex flex-col gap-8">
               {[
-                { label: 'General Enquiries', value: 'hello@44luxury.com', href: 'mailto:hello@44luxury.com' },
-                { label: 'Customer Support', value: 'support@44luxury.com', href: 'mailto:support@44luxury.com' },
-                { label: 'Press & Media', value: 'press@44luxury.com', href: 'mailto:press@44luxury.com' },
-                { label: 'Stockist Enquiries', value: 'trade@44luxury.com', href: 'mailto:trade@44luxury.com' },
+                { label: 'General Enquiries',  value: 'hello@44luxury.com',   href: 'mailto:hello@44luxury.com'   },
+                { label: 'Customer Support',   value: 'support@44luxury.com', href: 'mailto:support@44luxury.com' },
+                { label: 'Press & Media',      value: 'press@44luxury.com',   href: 'mailto:press@44luxury.com'   },
+                { label: 'Stockist Enquiries', value: 'trade@44luxury.com',   href: 'mailto:trade@44luxury.com'   },
               ].map(item => (
                 <div key={item.label}>
                   <p className="font-grotesk font-bold text-[10px] uppercase tracking-widest text-[#5f5e5e] mb-1">{item.label}</p>
@@ -65,18 +67,19 @@ export default function Contact() {
                 </div>
               ))}
 
+              {/* Flagship address — CMS-driven */}
               <div className="border-t border-[#1c1c18]/10 pt-8 mt-2">
                 <p className="font-grotesk font-bold text-[10px] uppercase tracking-widest text-[#5f5e5e] mb-3">FLAGSHIP</p>
                 <p className="font-plex text-sm text-[#1c1c18] leading-relaxed">
-                  44 Bourdillon Road, Ikoyi<br />Lagos, Nigeria<br />Open Mon–Sat, 10am–7pm
+                  {address}<br />{hours}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Form */}
+          {/* Form column */}
           <div>
-            <h2 className="font-unica text-4xl uppercase tracking-tighter text-[#1c1c18] mb-8">SEND A MESSAGE</h2>
+            <h2 className="font-unica text-4xl md:text-5xl uppercase tracking-tighter text-[#1c1c18] mb-10">SEND A MESSAGE</h2>
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>

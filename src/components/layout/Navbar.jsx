@@ -4,7 +4,7 @@ import { Search, User, ShoppingBag, Menu, X, ChevronDown } from 'lucide-react';
 import { useSiteStore } from '../../store/useSiteStore';
 import { useAuthStore } from '../../store/authStore';
 
-export default function Navbar() {
+export default function Navbar({ isTransparent = false }) {
   const navigate = useNavigate();
   const { collections, getCartCount, openCart } = useSiteStore();
   const { isAuthenticated, profile } = useAuthStore();
@@ -90,13 +90,18 @@ export default function Navbar() {
     },
     { label: 'ABOUT', href: '/about' },
     { label: 'FAQ', href: '/faq' },
+    { label: 'SHIPPING', href: '/shipping' },
     { label: 'CONTACT', href: '/contact' },
   ];
 
   return (
     <>
       {/* ── Main Navbar ─────────────────────────────── */}
-      <nav className="sticky top-0 z-40 w-full bg-[#1c1c18] text-[#fcf9f3] border-b border-[#fcf9f3]/5">
+      <nav className={`w-full text-[#fcf9f3] transition-colors duration-300 ${
+        isTransparent
+          ? 'bg-transparent border-b-0'
+          : 'bg-[#1c1c18] border-b border-[#fcf9f3]/5'
+      }`}>
         <div className="max-w-[1440px] mx-auto px-5 h-[70px] flex items-center justify-between">
 
           {/* Left: Hamburger (always visible) */}
@@ -116,10 +121,10 @@ export default function Navbar() {
             aria-label="44 LUXURY Home"
           >
             <img
-              src="/favicon.png"
+              src="/logo-burgundy-main.jpg"
               alt="44 LUXURY"
               className="h-8 md:h-10 w-auto object-contain"
-              style={{ filter: 'invert(1)' }}
+              style={{ filter: 'url(#remove-white)' }}
             />
           </Link>
 
@@ -180,7 +185,7 @@ export default function Navbar() {
             {/* Drawer Header */}
             <div className="flex justify-between items-center px-6 py-6 border-b border-[#fcf9f3]/8">
               <Link to="/" onClick={closeDrawer} className="flex items-center hover:opacity-80 transition-opacity">
-                <img src="/favicon.png" alt="44 LUXURY" className="h-7 w-auto object-contain" style={{ filter: 'invert(1)' }} />
+                <img src="/logo-burgundy-main.jpg" alt="44 LUXURY" className="h-7 w-auto object-contain" style={{ filter: 'url(#remove-white)' }} />
               </Link>
               <button onClick={closeDrawer} className="text-[#a8a8a0] hover:text-[#fcf9f3] transition-colors p-1">
                 <X size={22} />

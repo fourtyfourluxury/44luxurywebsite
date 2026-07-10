@@ -65,7 +65,7 @@ export async function getStoreInfo() {
       name: data?.store_name || '44LUXURY',
       email: data?.contact_email || 'hello@44luxury.com',
       phone: data?.contact_phone || '+234 800 000 0044',
-      address: data?.store_address || '44 Bourdillon Road, Ikoyi, Lagos',
+      address: data?.store_address || 'Shariff Plaza, Banex Wuse 2, Shop C426, Abuja, Nigeria',
     };
 
     return { data: storeInfo, error: null };

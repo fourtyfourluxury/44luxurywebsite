@@ -25,19 +25,15 @@ const footerLinks = {
     { label: 'New Arrivals', href: '/shop?filter=new' },
     { label: 'Men', href: '/shop/men' },
     { label: 'Women', href: '/shop/women' },
-    { label: 'Collections', href: '/shop' },
+    { label: 'Collections', href: '/collections' },
   ],
   SUPPORT: [
     { label: 'FAQ', href: '/faq' },
-    { label: 'Shipping & Returns', href: '/faq#shipping' },
-    { label: 'Size Guide', href: '/faq#sizing' },
+    { label: 'Shipping', href: '/shipping' },
     { label: 'Contact', href: '/contact' },
   ],
   COMPANY: [
     { label: 'About 44LUXURY', href: '/about' },
-    { label: 'Careers', href: '/about#careers' },
-    { label: 'Press', href: '/about#press' },
-    { label: 'Stockists', href: '/about#stockists' },
   ],
 };
 
@@ -57,8 +53,13 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-12 mb-16">
           {/* Brand Column */}
           <div className="md:col-span-2">
-            <Link to="/" className="font-unica text-5xl uppercase tracking-tighter text-[#fcf9f3] hover:text-[#D4AF37] transition-colors block mb-6">
-              44 LUXURY
+            <Link to="/" className="block mb-6 hover:opacity-80 transition-opacity">
+              <img
+                src="/logo-burgundy-main.jpg"
+                alt="44 LUXURY"
+                className="h-10 w-auto object-contain"
+                style={{ filter: 'url(#remove-white)' }}
+              />
             </Link>
             <p className="font-plex text-sm text-[#5f5e5e] max-w-xs leading-relaxed mb-8">
               Born from pain. Built to last.<br />

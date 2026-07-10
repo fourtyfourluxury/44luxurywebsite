@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useSiteStore } from '../../store/useSiteStore';
 
+const isVideo = (url = '') => /\.(mp4|webm|mov)$/i.test(url) || url.includes('/video/');
+
 export default function SplitContent() {
   const { splitContent, _hasHydrated } = useSiteStore();
 
@@ -15,11 +17,19 @@ export default function SplitContent() {
           className="relative group aspect-[4/5] md:aspect-auto md:h-[80vh] min-h-[500px] overflow-hidden bg-[#1c1c18]"
         >
           {splitContent.collections?.image && (
-            <img 
-              src={splitContent.collections.image} 
-              alt="Collections" 
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-105" 
-            />
+            isVideo(splitContent.collections.image) ? (
+              <video 
+                src={splitContent.collections.image} 
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-105" 
+                muted autoPlay loop playsInline
+              />
+            ) : (
+              <img 
+                src={splitContent.collections.image} 
+                alt="Collections" 
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-105" 
+              />
+            )
           )}
           <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
           <div className="absolute inset-0 flex items-center justify-center">
@@ -35,11 +45,19 @@ export default function SplitContent() {
           className="relative group aspect-[4/5] md:aspect-auto md:h-[80vh] min-h-[500px] overflow-hidden bg-[#1c1c18]"
         >
           {splitContent.newArrivals?.image && (
-            <img 
-              src={splitContent.newArrivals.image} 
-              alt="New Arrivals" 
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-105" 
-            />
+            isVideo(splitContent.newArrivals.image) ? (
+              <video 
+                src={splitContent.newArrivals.image} 
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-105" 
+                muted autoPlay loop playsInline
+              />
+            ) : (
+              <img 
+                src={splitContent.newArrivals.image} 
+                alt="New Arrivals" 
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-105" 
+              />
+            )
           )}
           <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
           <div className="absolute inset-0 flex items-center justify-center">

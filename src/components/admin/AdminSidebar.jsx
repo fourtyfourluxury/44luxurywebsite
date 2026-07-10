@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Home, Layers, Package, Image,
   ShoppingCart, MessageSquare, Settings, Shield,
-  LogOut, ChevronRight, Store
+  LogOut, ChevronRight, Store, Users, Video,
+  HelpCircle, Mail, Truck, Globe
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
@@ -15,19 +16,31 @@ const navGroups = [
     ],
   },
   {
-    label: 'Content',
+    label: 'Website',
     items: [
       { label: 'Homepage', path: '/admin/homepage', icon: Home },
       { label: 'Collections', path: '/admin/collections', icon: Layers },
+    ],
+  },
+  {
+    label: 'Shop',
+    items: [
       { label: 'Products', path: '/admin/products', icon: Package },
-      { label: 'Media Library', path: '/admin/media', icon: Image },
     ],
   },
   {
     label: 'Operations',
     items: [
       { label: 'Orders', path: '/admin/orders', icon: ShoppingCart },
+      { label: 'Customers', path: '/admin/customers', icon: Users },
       { label: 'Complaints', path: '/admin/complaints', icon: MessageSquare },
+    ],
+  },
+  {
+    label: 'Media',
+    items: [
+      { label: 'Media Library', path: '/admin/media', icon: Image },
+      { label: 'Video Manager', path: '/admin/videos', icon: Video },
     ],
   },
   {

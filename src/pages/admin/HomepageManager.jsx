@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Upload, Trash2, Edit2, Plus, X, RefreshCw, GripVertical, Check, Image as ImageIcon,
-  Settings, Type, Loader2
+  Settings, Type, Loader2, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { getHomepageConfig, updateHomepageConfig, getHeroSlides, createHeroSlide, updateHeroSlide, deleteHeroSlide } from '../../services/admin/homepageAdminService';
-import { uploadFile, compressImage, BUCKETS } from '../../services/storageService';
+import { uploadFile, compressImage, deleteFileByUrl, BUCKETS } from '../../services/storageService';
 import { toast } from '../../components/ui/ToastProvider';
 import { useSiteStore } from '../../store/useSiteStore';
+
+const isVideo = (name = '') => /\.(mp4|webm|mov)$/i.test(name) || name.includes('/video/');
 
 export default function HomepageManager() {
   const [config, setConfig] = useState(null);
@@ -34,7 +36,15 @@ export default function HomepageManager() {
     if (error) toast(error, 'error'); 
     else { 
       toast('Saved successfully!', 'success'); 
-      setConfig(p => ({ ...p, [key]: data })); 
+      setConfig(p => {
+        const updatedSections = { ...(p?.sections || {}), [key]: data };
+        return {
+          ...p,
+          sections: updatedSections,
+          _rawSections: { ...(p?._rawSections || {}), [key]: data },
+          [key]: data
+        };
+      }); 
     }
     setActiveEditor(null);
   };
@@ -44,7 +54,15 @@ export default function HomepageManager() {
     if (error) toast(error, 'error'); 
     else { 
       toast('Saved successfully!', 'success'); 
-      setConfig(p => ({ ...p, ...updates })); 
+      setConfig(p => {
+        const updatedSections = { ...(p?.sections || {}), ...updates };
+        return {
+          ...p,
+          ...updates,
+          sections: updatedSections,
+          _rawSections: { ...(p?._rawSections || {}), ...updates }
+        };
+      }); 
     }
     setActiveEditor(null);
   }
@@ -156,10 +174,18 @@ export default function HomepageManager() {
           </div>
           {/* 4 category tiles */}
           <div className="grid grid-cols-4 gap-3 px-8 w-full opacity-60 group-hover:opacity-30 transition-opacity">
-            {['Sweatshirts', 'Accessories', 'Polo', 'Tank Tops'].map((cat, i) => (
-              <div key={cat} className="aspect-[3/4] bg-white/5 border border-white/10 flex flex-col items-center justify-end pb-4 relative overflow-hidden">
+            {(config?.sections?.categories || config?.categories || [
+              { label: 'Sweatshirts', image: 'https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=700&q=85&auto=format&fit=crop' },
+              { label: 'Accessories', image: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=700&q=85&auto=format&fit=crop' },
+              { label: 'Polo', image: 'https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=700&q=85&auto=format&fit=crop' },
+              { label: 'Tank Tops', image: 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=700&q=85&auto=format&fit=crop' }
+            ]).map((cat, i) => (
+              <div key={i} className="aspect-[4/5] bg-white/5 border border-white/10 flex flex-col items-center justify-end pb-4 relative overflow-hidden">
+                {cat.image ? (
+                  <img src={cat.image} className="absolute inset-0 w-full h-full object-cover" alt="" />
+                ) : null}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <span className="relative z-10 text-[10px] font-bold text-white/70 uppercase tracking-widest mb-2">{cat}</span>
+                <span className="relative z-10 text-[10px] font-bold text-white/70 uppercase tracking-widest mb-2 text-center px-1 truncate w-full">{cat.label}</span>
                 <span className="relative z-10 text-[8px] border border-red-500/60 text-red-400/70 px-3 py-1 font-bold uppercase tracking-widest">SHOP NOW</span>
               </div>
             ))}
@@ -170,9 +196,139 @@ export default function HomepageManager() {
             </button>
           </div>
         </div>
+
+        {/* ── Section 4: CONTACT PAGE BANNER ── */}
+        <div
+          onClick={() => setActiveEditor('contact_hero')}
+          className="relative w-full py-12 bg-[#0c0c09] cursor-pointer group flex flex-col items-center border-b border-white/10"
+        >
+          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.02] transition-colors" />
+          <div className="w-full px-8 mb-6 flex items-center justify-between">
+            <div>
+              <span className="text-[9px] bg-black/60 text-white/60 font-bold uppercase tracking-widest px-3 py-1.5">
+                4. CONTACT PAGE HERO BANNER
+              </span>
+              <p className="text-[10px] text-white/30 mt-2 font-mono">
+                {config?.sections?.contact_hero?.image ? 'Dynamic Image Active' : 'Default Asset Active'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {config?.sections?.contact_hero?.visible !== false ? (
+                <span className="text-[9px] text-green-400 font-bold bg-green-500/10 px-2.5 py-1 uppercase tracking-widest">ENABLED</span>
+              ) : (
+                <span className="text-[9px] text-white/30 font-bold bg-white/5 px-2.5 py-1 uppercase tracking-widest">DISABLED</span>
+              )}
+            </div>
+          </div>
+          <div className="w-full px-8 opacity-60 group-hover:opacity-30 transition-opacity">
+            <div className="aspect-[4/5] max-w-[200px] mx-auto bg-white/5 border border-white/10 overflow-hidden relative flex items-center justify-center">
+              {config?.sections?.contact_hero?.image ? (
+                <img src={config?.sections?.contact_hero?.image} className="w-full h-full object-cover" alt="Contact Hero Preview" />
+              ) : (
+                <img src="/lifestyle-contact.jpg" className="w-full h-full object-cover" alt="Contact Hero Preview Default" />
+              )}
+              <div className="absolute bottom-4 left-4 right-4 z-10 text-left">
+                <p className="text-[8px] font-bold text-white/70 uppercase tracking-widest mb-1">{config?.sections?.contact_hero?.subtitle || 'GET IN TOUCH'}</p>
+                <h3 className="font-unica text-xl text-white uppercase leading-none">{config?.sections?.contact_hero?.title || 'CONTACT'}</h3>
+              </div>
+            </div>
+          </div>
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity translate-y-4 group-hover:translate-y-0 duration-300 pointer-events-none">
+            <button className="bg-white text-black px-6 py-2.5 font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl pointer-events-auto">
+              <Edit2 size={14} /> Edit Contact Banner
+            </button>
+          </div>
+        </div>
+
+        {/* ── Section 5: FAQ PAGE BANNER ── */}
+        <div
+          onClick={() => setActiveEditor('faq_hero')}
+          className="relative w-full py-12 bg-[#090907] cursor-pointer group flex flex-col items-center"
+        >
+          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.02] transition-colors" />
+          <div className="w-full px-8 mb-6 flex items-center justify-between">
+            <div>
+              <span className="text-[9px] bg-black/60 text-white/60 font-bold uppercase tracking-widest px-3 py-1.5">
+                5. FAQ PAGE HERO BANNER
+              </span>
+              <p className="text-[10px] text-white/30 mt-2 font-mono">
+                {config?.sections?.faq_hero?.image ? 'Dynamic Image Active' : 'Default Asset Active'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {config?.sections?.faq_hero?.visible !== false ? (
+                <span className="text-[9px] text-green-400 font-bold bg-green-500/10 px-2.5 py-1 uppercase tracking-widest">ENABLED</span>
+              ) : (
+                <span className="text-[9px] text-white/30 font-bold bg-white/5 px-2.5 py-1 uppercase tracking-widest">DISABLED</span>
+              )}
+            </div>
+          </div>
+          <div className="w-full px-8 opacity-60 group-hover:opacity-30 transition-opacity">
+            <div className="aspect-[4/5] max-w-[200px] mx-auto bg-white/5 border border-white/10 overflow-hidden relative flex items-center justify-center">
+              {config?.sections?.faq_hero?.image ? (
+                <img src={config?.sections?.faq_hero?.image} className="w-full h-full object-cover" alt="FAQ Hero Preview" />
+              ) : (
+                <img src="/lifestyle-faq.jpg" className="w-full h-full object-cover" alt="FAQ Hero Preview Default" />
+              )}
+              <div className="absolute bottom-4 left-4 right-4 z-10 text-left">
+                <p className="text-[8px] font-bold text-white/70 uppercase tracking-widest mb-1">{config?.sections?.faq_hero?.subtitle || 'HELP & INFORMATION'}</p>
+                <h3 className="font-unica text-xl text-white uppercase leading-none">{config?.sections?.faq_hero?.title || 'FAQ'}</h3>
+              </div>
+            </div>
+          </div>
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity translate-y-4 group-hover:translate-y-0 duration-300 pointer-events-none">
+            <button className="bg-white text-black px-6 py-2.5 font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl pointer-events-auto">
+              <Edit2 size={14} /> Edit FAQ Banner
+            </button>
+          </div>
+        </div>
+
+        {/* ── Section 6: HOMEPAGE STORE MAP ── */}
+        <div
+          onClick={() => setActiveEditor('contact_map')}
+          className="relative w-full py-10 bg-[#06060502] cursor-pointer group flex flex-col items-center border-t border-white/10"
+        >
+          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.02] transition-colors" />
+          <div className="w-full px-8 mb-6 flex items-center justify-between">
+            <div>
+              <span className="text-[9px] bg-black/60 text-white/60 font-bold uppercase tracking-widest px-3 py-1.5">
+                6. FLAGSHIP STORE MAP (HOMEPAGE)
+              </span>
+              <p className="text-[10px] text-white/30 mt-2 font-mono">
+                {config?.sections?.contact_map?.address || 'Shariff Plaza, Banex Wuse 2, Shop C426, Abuja, Nigeria'}
+              </p>
+              <p className="text-[9px] text-white/20 mt-1 font-mono">
+                lat: {config?.sections?.contact_map?.lat ?? '9.0573'} · lng: {config?.sections?.contact_map?.lng ?? '7.4845'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {config?.sections?.contact_map?.visible !== false ? (
+                <span className="text-[9px] text-green-400 font-bold bg-green-500/10 px-2.5 py-1 uppercase tracking-widest">VISIBLE</span>
+              ) : (
+                <span className="text-[9px] text-white/30 font-bold bg-white/5 px-2.5 py-1 uppercase tracking-widest">HIDDEN</span>
+              )}
+            </div>
+          </div>
+
+          {/* Map preview thumbnail */}
+          <div className="w-full px-8 opacity-60 group-hover:opacity-30 transition-opacity">
+            <div className="w-full max-w-[560px] mx-auto h-[110px] bg-[#1a1a14] border border-white/10 overflow-hidden relative flex items-center justify-center">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#4b0e1e]/60"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                <p className="text-[9px] font-grotesk uppercase tracking-widest text-white/30">Interactive Google Map · JS API</p>
+                <p className="text-[8px] font-grotesk text-white/20">{config?.sections?.contact_map?.sectionTitle || 'VISIT OUR FLAGSHIP STORE'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity translate-y-4 group-hover:translate-y-0 duration-300 pointer-events-none">
+            <button className="bg-white text-black px-6 py-2.5 font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl pointer-events-auto">
+              <Edit2 size={14} /> Edit Store Map & Location
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Editor Modals */}
       {activeEditor === 'hero' && (
         <HeroEditorModal 
           slides={slides} 
@@ -192,7 +348,24 @@ export default function HomepageManager() {
         />
       )}
       {activeEditor === 'categories' && (
-        <CategoriesInfoModal
+        <CategoriesEditorModal
+          config={config}
+          onSave={(data) => saveConfig('categories', data)}
+          onClose={() => setActiveEditor(null)}
+        />
+      )}
+      {(activeEditor === 'contact_hero' || activeEditor === 'faq_hero') && (
+        <PageBannerEditorModal
+          page={activeEditor === 'contact_hero' ? 'contact' : 'faq'}
+          config={config}
+          onSave={(data) => saveConfig(activeEditor, data)}
+          onClose={() => setActiveEditor(null)}
+        />
+      )}
+      {activeEditor === 'contact_map' && (
+        <ContactMapEditorModal
+          config={config}
+          onSave={(data) => saveConfig('contact_map', data)}
           onClose={() => setActiveEditor(null)}
         />
       )}
@@ -243,13 +416,16 @@ function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onCl
   const uploadImg = async (files) => {
     if (!files?.length) return;
     setUploading(true);
-    toast('Compressing and uploading image...', 'info');
+    const isVideoFile = isVideo(files[0].name) || files[0].type.startsWith('video/');
+    toast(isVideoFile ? 'Uploading video...' : 'Compressing and uploading image...', 'info');
     
     try {
-      // Compress the image before uploading to speed things up
-      const compressedFile = await compressImage(files[0], 1920, 0.8);
+      let fileToUpload = files[0];
+      if (!isVideoFile) {
+        fileToUpload = await compressImage(files[0], 1920, 0.8);
+      }
       
-      const { url } = await uploadFile(compressedFile, { bucket: BUCKETS.HERO_SLIDES, folder: 'hero' });
+      const { url } = await uploadFile(fileToUpload, { bucket: BUCKETS.HERO_SLIDES, folder: 'hero' });
       if (url) {
         if (slideDraft) {
           setSlideDraft({ ...slideDraft, image: url });
@@ -322,14 +498,18 @@ function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onCl
                 <p className="text-[13px] font-semibold text-white/80">Uploading Image...</p>
               </div>
             ) : slideDraft.image ? (
-               <img src={slideDraft.image} className={`w-full h-32 object-${slideDraft.objectFit || 'cover'} opacity-80`} style={{ objectPosition: slideDraft.objectPosition || 'top' }} alt="Preview" />
+               isVideo(slideDraft.image) ? (
+                 <video src={slideDraft.image} className={`w-full h-32 object-${slideDraft.objectFit || 'cover'} opacity-80`} style={{ objectPosition: slideDraft.objectPosition || 'top' }} muted autoPlay loop />
+               ) : (
+                 <img src={slideDraft.image} className={`w-full h-32 object-${slideDraft.objectFit || 'cover'} opacity-80`} style={{ objectPosition: slideDraft.objectPosition || 'top' }} alt="Preview" />
+               )
             ) : (
               <div className="py-6">
                 <Upload size={24} className="text-white/30 mx-auto mb-3" />
-                <p className="text-[13px] font-semibold text-white/80">Click to change image</p>
+                <p className="text-[13px] font-semibold text-white/80">Click to change media</p>
               </div>
             )}
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => uploadImg(e.target.files)} />
+            <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={e => uploadImg(e.target.files)} />
           </div>
 
           <div className="grid grid-cols-1 gap-4">
@@ -407,8 +587,12 @@ function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onCl
             {slides.length === 0 && <p className="text-white/30 text-sm py-4">No slides yet.</p>}
             {slides.map((sl) => (
               <div key={sl.id} className="flex items-center gap-4 bg-[#141410] border border-white/10 rounded-xl p-3">
-                <div className="w-20 h-12 rounded overflow-hidden shrink-0">
-                  <img src={sl.image} alt="" className={`w-full h-full object-${sl.objectFit || 'cover'}`} />
+                <div className="w-20 h-12 rounded overflow-hidden shrink-0 bg-black flex items-center justify-center">
+                  {isVideo(sl.image) ? (
+                    <video src={sl.image} className={`w-full h-full object-${sl.objectFit || 'cover'}`} muted />
+                  ) : (
+                    <img src={sl.image} alt="" className={`w-full h-full object-${sl.objectFit || 'cover'}`} />
+                  )}
                 </div>
                 <div className="flex-1 text-[11px] text-white/80 truncate">
                   <span className="font-bold">{sl.headline || 'No Text'}</span>
@@ -536,11 +720,15 @@ function SplitContentModal({ type, config, onSave, onClose }) {
   const uploadImg = async (files) => {
     if (!files?.length) return;
     setUploading(true);
-    toast('Compressing and uploading image...', 'info');
+    const isVideoFile = isVideo(files[0].name) || files[0].type.startsWith('video/');
+    toast(isVideoFile ? 'Uploading video...' : 'Compressing and uploading image...', 'info');
     
     try {
-      const compressedFile = await compressImage(files[0], 1920, 0.8);
-      const { url } = await uploadFile(compressedFile, { bucket: BUCKETS.GENERAL, folder: 'split' });
+      let fileToUpload = files[0];
+      if (!isVideoFile) {
+        fileToUpload = await compressImage(files[0], 1920, 0.8);
+      }
+      const { url } = await uploadFile(fileToUpload, { bucket: BUCKETS.GENERAL, folder: 'split' });
       if (url) setDraft(p => ({ ...p, image: url }));
     } catch (err) {
       toast('Upload failed.', 'error');
@@ -578,10 +766,14 @@ function SplitContentModal({ type, config, onSave, onClose }) {
                 <p className="text-[12px] font-semibold text-white/80">Uploading Image...</p>
               </div>
             ) : draft.image ? (
-              <div className="w-full h-40 relative">
-                <img src={draft.image} alt="" className="w-full h-full object-cover rounded-lg" />
+              <div className="w-full h-40 relative bg-black flex items-center justify-center">
+                {isVideo(draft.image) ? (
+                  <video src={draft.image} className="w-full h-full object-cover rounded-lg" muted autoPlay loop />
+                ) : (
+                  <img src={draft.image} alt="" className="w-full h-full object-cover rounded-lg" />
+                )}
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                  <p className="text-[12px] font-bold text-white uppercase tracking-widest">Change Image</p>
+                  <p className="text-[12px] font-bold text-white uppercase tracking-widest">Change Media</p>
                 </div>
               </div>
             ) : (
@@ -590,7 +782,7 @@ function SplitContentModal({ type, config, onSave, onClose }) {
                 <p className="text-[12px] text-white/50">Click to upload</p>
               </div>
             )}
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => uploadImg(e.target.files)} />
+            <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={e => uploadImg(e.target.files)} />
           </div>
         </div>
 
@@ -603,51 +795,509 @@ function SplitContentModal({ type, config, onSave, onClose }) {
   );
 }
 
-// ── Categories Info Modal ─────────────────────────────────────────────────────
-// Categories are currently hardcoded in CategoriesShowcase.jsx.
-// This modal informs the admin and shows what they are.
-function CategoriesInfoModal({ onClose }) {
-  const categories = [
-    { label: 'Sweatshirts', link: '/shop?q=sweatshirt' },
-    { label: 'Accessories', link: '/shop?q=accessories' },
-    { label: 'Polo', link: '/shop?q=polo' },
-    { label: 'Tank Tops', link: '/shop?q=tank' },
+// ── Categories Editor Modal ───────────────────────────────────────────────────
+function CategoriesEditorModal({ config, onSave, onClose }) {
+  const defaultCategories = [
+    {
+      label: 'Sweatshirts',
+      slug: '/shop?q=sweatshirt',
+      image: 'https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=700&q=85&auto=format&fit=crop',
+    },
+    {
+      label: 'Accessories',
+      slug: '/shop?q=accessories',
+      image: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=700&q=85&auto=format&fit=crop',
+    },
+    {
+      label: 'Polo',
+      slug: '/shop?q=polo',
+      image: 'https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=700&q=85&auto=format&fit=crop',
+    },
+    {
+      label: 'Tank Tops',
+      slug: '/shop?q=tank',
+      image: 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=700&q=85&auto=format&fit=crop',
+    },
   ];
 
+  const initialCategories = config?.sections?.categories || config?.categories || defaultCategories;
+  const [categories, setCategories] = useState(JSON.parse(JSON.stringify(initialCategories)));
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef();
+
+  const handleMove = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= categories.length) return;
+    const updated = [...categories];
+    const temp = updated[index];
+    updated[index] = updated[newIndex];
+    updated[newIndex] = temp;
+    setCategories(updated);
+  };
+
+  const handleUploadImage = async (files, index) => {
+    if (!files?.length) return;
+    setUploading(true);
+    toast('Compressing and uploading category image...', 'info');
+
+    try {
+      const compressed = await compressImage(files[0], 1200, 0.8);
+      
+      // Clean up previous dynamic image from Supabase storage if applicable
+      const oldUrl = categories[index].image;
+      if (oldUrl && oldUrl.includes('/storage/v1/object/public/')) {
+        await deleteFileByUrl(oldUrl);
+      }
+
+      const { url } = await uploadFile(compressed, { bucket: BUCKETS.HOMEPAGE, folder: 'homepage/categories' });
+      if (url) {
+        const updated = [...categories];
+        updated[index].image = url;
+        setCategories(updated);
+        toast('Image uploaded successfully!', 'success');
+      }
+    } catch (err) {
+      toast('Upload failed.', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleClearImage = async (index) => {
+    const oldUrl = categories[index].image;
+    if (oldUrl && oldUrl.includes('/storage/v1/object/public/')) {
+      await deleteFileByUrl(oldUrl);
+    }
+    const updated = [...categories];
+    updated[index].image = '';
+    setCategories(updated);
+    toast('Image cleared.', 'info');
+  };
+
+  const handleUpdateField = (index, field, value) => {
+    const updated = [...categories];
+    updated[index][field] = value;
+    setCategories(updated);
+  };
+
+  const handleSave = () => {
+    onSave(categories);
+  };
+
   return (
-    <ModalWrapper title="Category Showcase — 4 Tiles" onClose={onClose}>
-      <div className="space-y-5">
-        <p className="text-[12px] text-white/60 leading-relaxed">
-          The categories section shows 4 fixed tiles with images linking to shop filter pages. 
-          The category images are curated Unsplash photos. Each tile links to a filtered shop page.
-        </p>
-
-        <div className="space-y-2">
-          <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3">Current Categories</p>
-          {categories.map((cat, i) => (
-            <div key={cat.label} className="flex items-center gap-4 bg-[#141410] border border-white/10 px-4 py-3">
-              <span className="w-5 h-5 flex items-center justify-center text-[10px] font-bold text-[#D4AF37] bg-[#D4AF37]/10">{i + 1}</span>
-              <div className="flex-1">
-                <p className="text-[12px] font-bold text-white/90">{cat.label}</p>
-                <p className="text-[10px] text-white/30 mt-0.5">{cat.link}</p>
-              </div>
-              <span className="text-[9px] border border-red-500/50 text-red-400/70 px-3 py-1 font-bold uppercase tracking-widest">SHOP NOW</span>
+    <ModalWrapper title="Edit Curated Categories (4 Tiles)" onClose={onClose}>
+      <div className="space-y-4 overflow-y-auto pr-1 max-h-[70vh]">
+        {editingIndex === null ? (
+          <>
+            <p className="text-[12px] text-white/55 mb-3 font-grotesk tracking-wide leading-relaxed">
+              Reorder, edit, or upload custom cover campaign photos (4:5 aspect ratio) for each of the 4 homepage category showcase tiles.
+            </p>
+            <div className="space-y-3">
+              {categories.map((cat, i) => (
+                <div key={i} className="flex items-center gap-4 bg-[#141410] border border-white/10 p-3 rounded-xl">
+                  <div className="w-16 h-20 bg-white/5 border border-white/10 overflow-hidden relative flex items-center justify-center shrink-0">
+                    {cat.image ? (
+                      <img src={cat.image} className="w-full h-full object-cover" alt="" />
+                    ) : (
+                      <ImageIcon size={18} className="text-white/20" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-bold text-white truncate">{cat.label || 'Unnamed Category'}</p>
+                    <p className="text-[10px] text-white/40 mt-1 truncate">{cat.slug || 'No Link'}</p>
+                  </div>
+                  
+                  {/* Reorder and Edit Actions */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button 
+                      onClick={() => handleMove(i, -1)} 
+                      disabled={i === 0}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-20"
+                    >
+                      <ArrowUp size={13} />
+                    </button>
+                    <button 
+                      onClick={() => handleMove(i, 1)} 
+                      disabled={i === categories.length - 1}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-20"
+                    >
+                      <ArrowDown size={13} />
+                    </button>
+                    <button 
+                      onClick={() => setEditingIndex(i)} 
+                      className="ml-1 px-3 py-1.5 bg-white/5 hover:bg-white/15 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+            
+            <div className="flex gap-3 pt-4 border-t border-white/5">
+              <button onClick={onClose} className="flex-1 py-3 border border-white/10 rounded-xl text-[12px] font-semibold text-white/60 hover:text-white transition-colors">Cancel</button>
+              <button onClick={handleSave} className="flex-1 py-3 bg-white text-black rounded-xl text-[12px] font-bold hover:bg-white/90 transition-colors">Save Category Config</button>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-4">
+            <button onClick={() => setEditingIndex(null)} className="text-xs text-[#c9a96e] hover:underline flex items-center gap-1 mb-2">
+              ← Back to Categories List
+            </button>
+            
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2">Editing Tile {editingIndex + 1}: {categories[editingIndex].label}</h4>
+            
+            <div>
+              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Category Cover Image</label>
+              <div 
+                onClick={() => !uploading && fileRef.current?.click()}
+                className={`border-2 border-dashed border-white/10 bg-[#141410] rounded-xl p-2 text-center transition-all relative overflow-hidden group ${uploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-white/30'}`}
+              >
+                {uploading ? (
+                  <div className="py-6 flex flex-col items-center justify-center">
+                    <Loader2 className="animate-spin text-white/50 mb-2" size={20} />
+                    <p className="text-[11px] text-white/80">Uploading to Supabase...</p>
+                  </div>
+                ) : categories[editingIndex].image ? (
+                  <div className="w-full h-40 relative bg-black flex items-center justify-center">
+                    <img src={categories[editingIndex].image} alt="" className="w-full h-full object-cover rounded-lg" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                      <p className="text-[11px] font-bold text-white uppercase tracking-widest">Change Image</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-8">
+                    <Upload size={18} className="text-white/30 mx-auto mb-2" />
+                    <p className="text-[11px] text-white/50">Click to upload custom cover</p>
+                  </div>
+                )}
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => handleUploadImage(e.target.files, editingIndex)} />
+              </div>
+              {categories[editingIndex].image && (
+                <button 
+                  onClick={() => handleClearImage(editingIndex)}
+                  className="mt-2 text-[10px] text-red-400 hover:text-red-300 font-bold uppercase tracking-wider flex items-center gap-1"
+                >
+                  <Trash2 size={11} /> Clear cover image
+                </button>
+              )}
+            </div>
 
-        <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/20 px-4 py-3">
-          <p className="text-[11px] text-[#D4AF37]/80 font-bold uppercase tracking-wider mb-1">How to Change Categories</p>
-          <p className="text-[11px] text-white/50 leading-relaxed">
-            To update category names, images, or links, ask your developer to edit 
-            <span className="font-mono text-white/70 mx-1">src/components/home/CategoriesShowcase.jsx</span>
-          </p>
-        </div>
+            <div>
+              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Category Label</label>
+              <input 
+                value={categories[editingIndex].label} 
+                onChange={e => handleUpdateField(editingIndex, 'label', e.target.value)}
+                className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-2.5 text-[12px] text-white outline-none transition-colors"
+                placeholder="e.g. Outerwear"
+              />
+            </div>
 
-        <button onClick={onClose} className="w-full py-3 bg-white text-black text-[12px] font-bold hover:bg-white/90 transition-colors">
-          Got It
-        </button>
+            <div>
+              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Shop Link (URL Path)</label>
+              <input 
+                value={categories[editingIndex].slug} 
+                onChange={e => handleUpdateField(editingIndex, 'slug', e.target.value)}
+                className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-2.5 text-[12px] text-white outline-none transition-colors"
+                placeholder="e.g. /shop?q=sweatshirt"
+              />
+            </div>
+
+            <button 
+              onClick={() => setEditingIndex(null)}
+              className="w-full py-3 mt-2 bg-[#c9a96e] text-black rounded-xl text-[12px] font-bold hover:bg-[#d4b87e] transition-colors"
+            >
+              Done Editing Tile
+            </button>
+          </div>
+        )}
       </div>
     </ModalWrapper>
   );
 }
+
+// ── Page Banner Editor Modal ───────────────────────────────────────────────────
+function PageBannerEditorModal({ page, config, onSave, onClose }) {
+  const isContact = page === 'contact';
+  const defaultTitle = isContact ? 'CONTACT' : 'FAQ';
+  const defaultSubtitle = isContact ? 'GET IN TOUCH' : 'HELP & INFORMATION';
+  const defaultImage = isContact ? '/lifestyle-contact.jpg' : '/lifestyle-faq.jpg';
+  
+  const pageKey = isContact ? 'contact_hero' : 'faq_hero';
+  const currentBanner = config?.sections?.[pageKey] || {};
+
+  const [draft, setDraft] = useState({
+    title: currentBanner.title || defaultTitle,
+    subtitle: currentBanner.subtitle || defaultSubtitle,
+    image: currentBanner.image || defaultImage,
+    visible: currentBanner.visible !== false,
+  });
+
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef();
+
+  const handleUploadImage = async (files) => {
+    if (!files?.length) return;
+    setUploading(true);
+    toast('Compressing and uploading banner image...', 'info');
+
+    try {
+      const compressed = await compressImage(files[0], 2000, 0.8);
+      
+      // Clear old dynamic image if present
+      if (draft.image && draft.image.includes('/storage/v1/object/public/')) {
+        await deleteFileByUrl(draft.image);
+      }
+
+      const { url } = await uploadFile(compressed, { bucket: BUCKETS.HOMEPAGE, folder: page });
+      if (url) {
+        setDraft(d => ({ ...d, image: url }));
+        toast('Banner uploaded successfully!', 'success');
+      }
+    } catch (err) {
+      toast('Upload failed.', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleClearImage = async () => {
+    if (draft.image && draft.image.includes('/storage/v1/object/public/')) {
+      await deleteFileByUrl(draft.image);
+    }
+    setDraft(d => ({ ...d, image: '' }));
+    toast('Image cleared.', 'info');
+  };
+
+  const handleSave = () => {
+    onSave(draft);
+  };
+
+  return (
+    <ModalWrapper title={`Edit ${defaultTitle} Page Hero Banner`} onClose={onClose}>
+      <div className="space-y-5">
+        <div className="flex items-center justify-between bg-[#141410] border border-white/10 px-4 py-3 rounded-xl">
+          <div>
+            <p className="text-[12px] font-bold text-white">Enable Page Hero Banner</p>
+            <p className="text-[10px] text-white/40 mt-0.5">Toggle visibility of this banner on the page</p>
+          </div>
+          <button 
+            onClick={() => setDraft(d => ({ ...d, visible: !d.visible }))}
+            className={`w-10 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${draft.visible ? 'bg-[#c9a96e]' : 'bg-white/10'}`}
+          >
+            <div className={`w-5 h-5 rounded-full bg-black transition-transform duration-200 ${draft.visible ? 'translate-x-4' : 'translate-x-0'}`} />
+          </button>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Banner Image</label>
+          <div 
+            onClick={() => !uploading && fileRef.current?.click()}
+            className={`border-2 border-dashed border-white/10 bg-[#141410] rounded-xl p-2 text-center transition-all relative overflow-hidden group ${uploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-white/30'}`}
+          >
+            {uploading ? (
+              <div className="py-8 flex flex-col items-center justify-center">
+                <Loader2 className="animate-spin text-white/50 mb-2" size={20} />
+                <p className="text-[11px] text-white/80 font-semibold">Uploading to Supabase...</p>
+              </div>
+            ) : draft.image ? (
+              <div className="w-full h-44 relative bg-black flex items-center justify-center">
+                <img src={draft.image} alt="" className="w-full h-full object-cover rounded-lg" />
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                  <p className="text-[11px] font-bold text-white uppercase tracking-widest">Change Image</p>
+                </div>
+              </div>
+            ) : (
+              <div className="py-8">
+                <Upload size={20} className="text-white/30 mx-auto mb-2" />
+                <p className="text-[12px] text-white/50">Click to upload custom banner</p>
+              </div>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => handleUploadImage(e.target.files)} />
+          </div>
+          {draft.image && draft.image !== defaultImage && (
+            <button 
+              onClick={handleClearImage}
+              className="mt-2 text-[10px] text-red-400 hover:text-red-300 font-bold uppercase tracking-wider flex items-center gap-1"
+            >
+              <Trash2 size={11} /> Reset to default asset
+            </button>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Hero Title</label>
+          <input 
+            value={draft.title} 
+            onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
+            className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors"
+            placeholder="e.g. CONTACT"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Hero Subtitle</label>
+          <input 
+            value={draft.subtitle} 
+            onChange={e => setDraft(d => ({ ...d, subtitle: e.target.value }))}
+            className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors"
+            placeholder="e.g. GET IN TOUCH"
+          />
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <button onClick={onClose} className="flex-1 py-3 border border-white/10 rounded-xl text-[12px] font-semibold text-white/60 hover:text-white transition-colors">Cancel</button>
+          <button onClick={handleSave} disabled={uploading} className="flex-1 py-3 bg-white text-black rounded-xl text-[12px] font-bold hover:bg-white/90 transition-colors disabled:opacity-50">Save Changes</button>
+        </div>
+      </div>
+    </ModalWrapper>
+  );
+}
+
+// ── Contact Map Editor Modal ───────────────────────────────────────────────────
+function ContactMapEditorModal({ config, onSave, onClose }) {
+  const current = config?.sections?.contact_map || {};
+
+  const [draft, setDraft] = useState({
+    visible:            current.visible !== false,
+    sectionTitle:       current.sectionTitle       || 'VISIT OUR STORE',
+    sectionDescription: current.sectionDescription || 'Step into the 44 Luxury showroom and experience the collection in person. Our team is on hand for bespoke styling consultations and exclusive in-store drops.',
+    address:            current.address            || 'Shop C426, Shariff Plaza, Banex, Wuse 2, Abuja, FCT, Nigeria',
+    lat:                current.lat !== undefined ? current.lat : 9.0573,
+    lng:                current.lng !== undefined ? current.lng : 7.4845,
+    mapsLink:           current.mapsLink           || 'https://maps.google.com/?q=Shop+C426+Shariff+Plaza+Banex+Wuse+2+Abuja',
+    hours:              current.hours              || 'Mon–Sat  10am–7pm · Sun  12pm–5pm',
+    popupContent:       current.popupContent       || '44 Luxury\nShop C426, Shariff Plaza, Banex, Wuse 2, Abuja',
+  });
+
+  const handleSave = () => {
+    // Parse coordinates safely
+    const latNum = parseFloat(draft.lat);
+    const lngNum = parseFloat(draft.lng);
+    onSave({
+      ...draft,
+      lat: isNaN(latNum) ? 9.0573 : latNum,
+      lng: isNaN(lngNum) ? 7.4845 : lngNum
+    });
+  };
+
+  return (
+    <ModalWrapper title="Edit Flagship Store Map & Location" onClose={onClose}>
+      <div className="space-y-5">
+        {/* Visibility Toggle */}
+        <div className="flex items-center justify-between bg-[#141410] border border-white/10 px-4 py-3 rounded-xl">
+          <div>
+            <p className="text-[12px] font-bold text-white">Enable Homepage Map Section</p>
+            <p className="text-[10px] text-white/40 mt-0.5">Toggle visibility of the store location map on the homepage</p>
+          </div>
+          <button 
+            type="button"
+            onClick={() => setDraft(d => ({ ...d, visible: !d.visible }))}
+            className={`w-10 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${draft.visible ? 'bg-[#c9a96e]' : 'bg-white/10'}`}
+          >
+            <div className={`w-5 h-5 rounded-full bg-black transition-transform duration-200 ${draft.visible ? 'translate-x-4' : 'translate-x-0'}`} />
+          </button>
+        </div>
+
+        {/* Section Title */}
+        <div>
+          <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Section Title</label>
+          <input
+            value={draft.sectionTitle}
+            onChange={e => setDraft(d => ({ ...d, sectionTitle: e.target.value }))}
+            className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors"
+            placeholder="e.g. VISIT OUR STORE"
+          />
+        </div>
+
+        {/* Section Description */}
+        <div>
+          <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Section Description</label>
+          <textarea
+            value={draft.sectionDescription}
+            onChange={e => setDraft(d => ({ ...d, sectionDescription: e.target.value }))}
+            rows={3}
+            className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors resize-none"
+            placeholder="Invite customers to visit the showroom..."
+          />
+        </div>
+
+        {/* Address */}
+        <div>
+          <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Store Address (Display text)</label>
+          <input
+            value={draft.address}
+            onChange={e => setDraft(d => ({ ...d, address: e.target.value }))}
+            className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors"
+            placeholder="e.g. Shop C426, Shariff Plaza, Banex, Wuse 2, Abuja, FCT, Nigeria"
+          />
+        </div>
+
+        {/* Opening Hours */}
+        <div>
+          <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Opening Hours</label>
+          <input
+            value={draft.hours}
+            onChange={e => setDraft(d => ({ ...d, hours: e.target.value }))}
+            className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors"
+            placeholder="e.g. Mon–Sat  10am–7pm · Sun  12pm–5pm"
+          />
+        </div>
+
+        {/* Coordinates */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Latitude</label>
+            <input
+              type="text"
+              value={draft.lat}
+              onChange={e => setDraft(d => ({ ...d, lat: e.target.value }))}
+              className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors font-mono"
+              placeholder="e.g. 9.0573"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Longitude</label>
+            <input
+              type="text"
+              value={draft.lng}
+              onChange={e => setDraft(d => ({ ...d, lng: e.target.value }))}
+              className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors font-mono"
+              placeholder="e.g. 7.4845"
+            />
+          </div>
+        </div>
+
+        {/* Marker Popup Content */}
+        <div>
+          <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Marker Popup Content (use newlines for spacing)</label>
+          <textarea
+            value={draft.popupContent}
+            onChange={e => setDraft(d => ({ ...d, popupContent: e.target.value }))}
+            rows={3}
+            className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors resize-none"
+            placeholder="44 Luxury&#10;Shop C426, Shariff Plaza, Banex, Wuse 2, Abuja"
+          />
+        </div>
+
+        {/* Directions Link */}
+        <div>
+          <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">"Get Directions" URL</label>
+          <input
+            value={draft.mapsLink}
+            onChange={e => setDraft(d => ({ ...d, mapsLink: e.target.value }))}
+            className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors font-mono"
+            placeholder="e.g. https://maps.google.com/?q=..."
+          />
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <button type="button" onClick={onClose} className="flex-1 py-3 border border-white/10 rounded-xl text-[12px] font-semibold text-white/60 hover:text-white transition-colors">Cancel</button>
+          <button type="button" onClick={handleSave} className="flex-1 py-3 bg-white text-black rounded-xl text-[12px] font-bold hover:bg-white/90 transition-colors">Save Changes</button>
+        </div>
+      </div>
+    </ModalWrapper>
+  );
+}
+

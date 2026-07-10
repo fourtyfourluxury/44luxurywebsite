@@ -46,6 +46,49 @@ export const useSiteStore = create(
           title: 'NEW ARRIVALS',
         }
       },
+      contactHero: {
+        title: 'CONTACT',
+        subtitle: 'GET IN TOUCH',
+        image: '/lifestyle-contact.jpg',
+      },
+      contactMap: {
+        visible: true,
+        sectionTitle: 'VISIT OUR STORE',
+        sectionDescription: 'Step into the 44 Luxury showroom and experience the collection in person. Our team is on hand for bespoke styling consultations and exclusive in-store drops.',
+        address: 'Shop C426, Shariff Plaza, Banex, Wuse 2, Abuja, FCT, Nigeria',
+        lat: 9.0573,
+        lng: 7.4845,
+        mapsLink: 'https://maps.google.com/?q=Shop+C426+Shariff+Plaza+Banex+Wuse+2+Abuja',
+        hours: 'Mon–Sat  10am–7pm \u00b7 Sun  12pm–5pm',
+        popupContent: '44 Luxury\nShop C426, Shariff Plaza, Banex, Wuse 2, Abuja',
+      },
+      faqHero: {
+        title: 'FAQ',
+        subtitle: 'HELP & INFORMATION',
+        image: '/lifestyle-faq.jpg',
+      },
+      categories: [
+        {
+          label: 'Sweatshirts',
+          slug: '/shop?q=sweatshirt',
+          image: 'https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=700&q=85&auto=format&fit=crop',
+        },
+        {
+          label: 'Accessories',
+          slug: '/shop?q=accessories',
+          image: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=700&q=85&auto=format&fit=crop',
+        },
+        {
+          label: 'Polo',
+          slug: '/shop?q=polo',
+          image: 'https://images.unsplash.com/photo-1586790170083-2f9ceadc732d?w=700&q=85&auto=format&fit=crop',
+        },
+        {
+          label: 'Tank Tops',
+          slug: '/shop?q=tank',
+          image: 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=700&q=85&auto=format&fit=crop',
+        },
+      ],
 
       // ─── Orders (will be fetched per user) ──────────────────
       orders: [],
@@ -135,6 +178,10 @@ export const useSiteStore = create(
               collections: homepageConfig?.collections_row || state.splitContent.collections,
               newArrivals: homepageConfig?.new_arrivals || state.splitContent.newArrivals,
             },
+            contactHero: homepageConfig?.sections?.contact_hero || state.contactHero,
+            contactMap: homepageConfig?.sections?.contact_map || state.contactMap,
+            faqHero: homepageConfig?.sections?.faq_hero || state.faqHero,
+            categories: homepageConfig?.sections?.categories || state.categories,
             loading: false,
             initialized: true,
             error: null,
@@ -172,16 +219,21 @@ export const useSiteStore = create(
           const { slides: heroSlides } = await homepageService.getHeroSlides();
           
           if (homepageConfig) {
+            const current = get();
             set({
               heroSlides: heroSlides || [],
-              announcement: homepageConfig.announcement,
-              heroDisplayMode: homepageConfig.hero_display_mode,
-              heroSpeed: homepageConfig.hero_speed,
+              announcement: homepageConfig.announcement || current.announcement,
+              heroDisplayMode: homepageConfig.hero_display_mode || current.heroDisplayMode,
+              heroSpeed: homepageConfig.hero_speed || current.heroSpeed,
               featuredClothes: { productIds: homepageConfig.featured_product_ids || [] },
               splitContent: {
-                collections: homepageConfig.collections_row || state.splitContent.collections,
-                newArrivals: homepageConfig.new_arrivals || state.splitContent.newArrivals,
+                collections: homepageConfig.collections_row || current.splitContent.collections,
+                newArrivals: homepageConfig.new_arrivals || current.splitContent.newArrivals,
               },
+              contactHero: homepageConfig.sections?.contact_hero || current.contactHero,
+              contactMap: homepageConfig.sections?.contact_map || current.contactMap,
+              faqHero: homepageConfig.sections?.faq_hero || current.faqHero,
+              categories: homepageConfig.sections?.categories || current.categories,
             });
             
             console.log('✅ Homepage data refreshed successfully');
@@ -198,15 +250,20 @@ export const useSiteStore = create(
         // Subscribe to homepage config changes
         const configChannel = subscribeToHomepageConfig(({ config }) => {
           console.log('🔄 Realtime: Homepage config updated');
+          const current = get();
           set({
-            announcement: config.announcement,
-            heroDisplayMode: config.hero_display_mode,
-            heroSpeed: config.hero_speed,
+            announcement: config.announcement || current.announcement,
+            heroDisplayMode: config.hero_display_mode || current.heroDisplayMode,
+            heroSpeed: config.hero_speed || current.heroSpeed,
             featuredClothes: { productIds: config.featured_product_ids || [] },
             splitContent: {
-              collections: config.collections_row || state.splitContent.collections,
-              newArrivals: config.new_arrivals || state.splitContent.newArrivals,
+              collections: config.collections_row || current.splitContent.collections,
+              newArrivals: config.new_arrivals || current.splitContent.newArrivals,
             },
+            contactHero: config.sections?.contact_hero || current.contactHero,
+            contactMap: config.sections?.contact_map || current.contactMap,
+            faqHero: config.sections?.faq_hero || current.faqHero,
+            categories: config.sections?.categories || current.categories,
           });
         });
 
@@ -228,16 +285,16 @@ export const useSiteStore = create(
 
       // ─── Refresh Data (Re-fetch from Supabase) ──────────────
       refreshProducts: async () => {
-        const { data, error } = await productService.getAllProducts();
-        if (!error && data) {
-          set({ products: data });
+        const { products, error } = await productService.getProducts();
+        if (!error && products) {
+          set({ products });
         }
       },
 
       refreshCollections: async () => {
-        const { data, error } = await collectionService.getAllCollections();
-        if (!error && data) {
-          set({ collections: data });
+        const { collections, error } = await collectionService.getCollections();
+        if (!error && collections) {
+          set({ collections });
         }
       },
 
