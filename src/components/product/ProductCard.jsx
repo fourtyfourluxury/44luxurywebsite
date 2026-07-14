@@ -10,8 +10,22 @@ export default function ProductCard({ product }) {
   const mainImage  = product.images?.[0] || '';
   const hoverImage = product.images?.[1] || mainImage;
 
-  // Determine if product has a sale price
-  const hasSale = product.comparePrice && product.comparePrice > product.price;
+  // Support both camelCase (legacy) and snake_case (DB)
+  const hasSale      = (product.compare_price || product.comparePrice) > product.price;
+  const isNew        = product.is_new || product.isNew;
+  const isBestSeller = product.is_best_seller;
+  const isLimited    = product.is_limited_edition;
+  const isSoldOut    = product.status === 'SOLD OUT';
+  const isPreOrder   = product.status === 'PRE-ORDER';
+
+  // Badge priority: SOLD OUT > LIMITED > SALE > BEST SELLER > NEW IN
+  const badge = isSoldOut    ? { label: 'SOLD OUT',   cls: 'bg-[#5f5e5e] text-[#fcf9f3]' }
+    : isLimited    ? { label: 'LIMITED',    cls: 'bg-[#4b0e1e] text-[#fcf9f3]' }
+    : hasSale      ? { label: 'SALE',       cls: 'bg-[#5f5e5e] text-[#fcf9f3]' }
+    : isBestSeller ? { label: 'BEST SELLER',cls: 'bg-[#1c1c18] text-[#c9a96e]' }
+    : isNew        ? { label: 'NEW IN',     cls: 'bg-[#1c1c18] text-[#fcf9f3]' }
+    : isPreOrder   ? { label: 'PRE-ORDER',  cls: 'bg-blue-900 text-blue-200' }
+    : null;
 
   const handleQuickAdd = (e) => {
     e.preventDefault();
@@ -30,30 +44,20 @@ export default function ProductCard({ product }) {
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
-        {/* ── Badges (top-left, like YL) ── */}
-        {hasSale && (
-          <div className="absolute top-3 left-3 z-10 bg-[#5f5e5e] text-[#fcf9f3] font-grotesk font-bold text-[9px] uppercase tracking-widest px-2.5 py-1">
-            SALE
-          </div>
-        )}
-        {product.isNew && !hasSale && (
-          <div className="absolute top-3 left-3 z-10 bg-[#1c1c18] text-[#fcf9f3] font-grotesk font-bold text-[9px] uppercase tracking-widest px-2.5 py-1">
-            NEW IN
-          </div>
-        )}
-        {product.status === 'SOLD OUT' && (
-          <div className="absolute top-3 left-3 z-10 bg-[#5f5e5e] text-[#fcf9f3] font-grotesk font-bold text-[9px] uppercase tracking-widest px-2.5 py-1">
-            SOLD OUT
+        {/* Badge */}
+        {badge && (
+          <div className={`absolute top-3 left-3 z-10 font-grotesk font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 ${badge.cls}`}>
+            {badge.label}
           </div>
         )}
 
-        {/* ── Main Image ── */}
+        {/* Main Image */}
         <img
           src={mainImage}
           alt={product.name}
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${hovered && hoverImage !== mainImage ? 'opacity-0' : 'opacity-100'}`}
         />
-        {/* ── Hover Image (swap on hover, like YL) ── */}
+        {/* Hover Image */}
         {hoverImage !== mainImage && (
           <img
             src={hoverImage}
@@ -62,27 +66,27 @@ export default function ProductCard({ product }) {
           />
         )}
 
-        {/* ── "CHOOSE OPTIONS" overlay button at bottom — exact YL pattern ── */}
-        {product.status !== 'SOLD OUT' && (
+        {/* Quick Add / Pre-Order overlay */}
+        {!isSoldOut && (
           <div className={`absolute bottom-0 left-0 right-0 transition-all duration-300 ${hovered ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
             <button
               onClick={handleQuickAdd}
               className="w-full bg-white/95 text-[#1c1c18] font-grotesk font-bold uppercase tracking-widest text-[10px] py-3.5 hover:bg-[#1c1c18] hover:text-[#fcf9f3] transition-colors border-t border-[#1c1c18]/10"
             >
-              CHOOSE OPTIONS
+              {isPreOrder ? 'PRE-ORDER' : 'CHOOSE OPTIONS'}
             </button>
           </div>
         )}
 
-        {/* ── Out of Stock label ── */}
-        {product.status === 'SOLD OUT' && (
+        {/* Sold Out overlay */}
+        {isSoldOut && (
           <div className={`absolute bottom-0 left-0 right-0 bg-[#1c1c18]/80 py-3 transition-all duration-300 ${hovered ? 'opacity-100' : 'opacity-0'}`}>
             <p className="text-center font-grotesk font-bold text-[10px] uppercase tracking-widest text-[#fcf9f3]">OUT OF STOCK</p>
           </div>
         )}
       </div>
 
-      {/* ── Product Info ── */}
+      {/* Product Info */}
       <div className="flex flex-col gap-1.5">
         <h3 className="font-unica text-base md:text-lg uppercase tracking-tight text-[#1c1c18] leading-tight">
           {product.name}
@@ -93,7 +97,7 @@ export default function ProductCard({ product }) {
           </p>
           {hasSale && (
             <p className="font-plex text-xs text-[#5f5e5e] line-through">
-              ₦{product.comparePrice?.toLocaleString()}
+              ₦{(product.compare_price || product.comparePrice)?.toLocaleString()}
             </p>
           )}
         </div>

@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Home, Layers, Package, Image,
   ShoppingCart, MessageSquare, Settings, Shield,
   LogOut, ChevronRight, Store, Users, Video,
-  HelpCircle, Mail, Truck, Globe
+  HelpCircle, Mail, Truck, Globe, FileText
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
@@ -20,6 +20,8 @@ const navGroups = [
     items: [
       { label: 'Homepage', path: '/admin/homepage', icon: Home },
       { label: 'Collections', path: '/admin/collections', icon: Layers },
+      { label: 'Pages', path: '/admin/pages', icon: FileText },
+      { label: 'Partnerships', path: '/admin/partnerships', icon: Globe },
     ],
   },
   {

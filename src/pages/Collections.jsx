@@ -1,7 +1,23 @@
+import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MapPin } from 'lucide-react';
 import { useSiteStore } from '../store/useSiteStore';
 import ProductCard from '../components/product/ProductCard';
+
+// Inject / update <head> SEO tags
+function useSEO({ title, description, keywords }) {
+  useEffect(() => {
+    if (title)       document.title = title;
+    const setMeta = (name, content) => {
+      if (!content) return;
+      let el = document.querySelector(`meta[name="${name}"]`);
+      if (!el) { el = document.createElement('meta'); el.name = name; document.head.appendChild(el); }
+      el.content = content;
+    };
+    setMeta('description', description);
+    setMeta('keywords', keywords);
+  }, [title, description, keywords]);
+}
 
 export default function Collections() {
   const { slug } = useParams();
@@ -9,16 +25,18 @@ export default function Collections() {
 
   const collection = collections.find(c => c.slug === slug);
 
+  useSEO({
+    title:       collection?.seo_title       || (collection ? `${collection.name} | 44 Luxury` : '44 Luxury'),
+    description: collection?.seo_description || collection?.description,
+    keywords:    collection?.seo_keywords,
+  });
+
   if (!collection) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#fcf9f3]">
         <div className="text-center px-6">
-          <p className="font-unica text-[12vw] uppercase tracking-tighter text-[#1c1c18]/10 leading-none mb-6">
-            404
-          </p>
-          <p className="font-unica text-3xl uppercase tracking-tighter text-[#5f5e5e] mb-8">
-            COLLECTION NOT FOUND
-          </p>
+          <p className="font-unica text-[12vw] uppercase tracking-tighter text-[#1c1c18]/10 leading-none mb-6">404</p>
+          <p className="font-unica text-3xl uppercase tracking-tighter text-[#5f5e5e] mb-8">COLLECTION NOT FOUND</p>
           <Link to="/shop" className="font-grotesk font-bold text-xs uppercase tracking-widest text-[#1c1c18] border-b border-[#1c1c18] pb-0.5 hover:text-[#4b0e1e] hover:border-[#4b0e1e] transition-colors">
             BROWSE ALL
           </Link>
@@ -27,13 +45,15 @@ export default function Collections() {
     );
   }
 
-  const collectionProducts = products.filter(p =>
-    p.status !== 'DRAFT' && (
-      p.collection_id === collection.id ||
-      p.collection === collection.slug ||
-      p.collections?.includes(collection.id)
-    )
-  );
+  // Product filtering — match by collection_id, slug, category_type, or fallback to gender category
+  const collectionProducts = products.filter(p => {
+    if (p.status === 'DRAFT') return false;
+    if (p.collection_id === collection.id)              return true;
+    if (p.collection === collection.slug)               return true;
+    if (p.collections?.includes(collection.id))         return true;
+    if (collection.category_type && p.category_type === collection.category_type) return true;
+    return false;
+  });
 
   const displayProducts = collectionProducts.length > 0
     ? collectionProducts
@@ -42,9 +62,13 @@ export default function Collections() {
         (p.category === collection.category || collection.category === 'unisex')
       );
 
+  const categoryLabel = collection.category_type
+    ? collection.category_type.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    : collection.category?.toUpperCase();
+
   return (
     <div>
-      {/* ── Hero ─────────────────────────────── */}
+      {/* ── Hero Banner ──────────────────────────────── */}
       <div className="relative h-[70vh] min-h-[480px] max-h-[720px] overflow-hidden bg-[#1c1c18]">
         {collection.hero_image && (
           <img
@@ -56,7 +80,7 @@ export default function Collections() {
         <div className="absolute inset-0 bg-gradient-to-t from-[#1c1c18]/90 via-[#1c1c18]/30 to-transparent" />
 
         <Link
-          to="/shop"
+          to="/collections"
           className="absolute top-8 left-8 flex items-center gap-2 text-[#fcf9f3]/70 hover:text-[#fcf9f3] transition-colors font-grotesk font-semibold text-xs uppercase tracking-widest"
         >
           <ArrowLeft size={14} /> ALL COLLECTIONS
@@ -64,20 +88,39 @@ export default function Collections() {
 
         <div className="absolute inset-0 flex flex-col justify-end px-8 md:px-16 pb-16 max-w-[1440px] mx-auto w-full">
           <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#fcf9f3]/50 mb-4">
-            {collection.category?.toUpperCase()} · {displayProducts.length} PIECES
+            {categoryLabel} · {displayProducts.length} PIECES
           </p>
           <h1 className="font-unica text-7xl md:text-[9rem] lg:text-[11rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3] mb-6">
-            {collection.name}
+            {collection.hero_headline || collection.name}
           </h1>
-          {collection.description && (
+          {(collection.hero_subheadline || collection.description) && (
             <p className="font-plex text-base text-[#fcf9f3]/65 max-w-md leading-relaxed">
-              {collection.description}
+              {collection.hero_subheadline || collection.description}
             </p>
           )}
         </div>
       </div>
 
-      {/* ── Gallery ─────────────────────────── */}
+      {/* ── Description strip (if description and no hero image text) ─── */}
+      {collection.description && collection.hero_image && (
+        <div className="bg-[#f7f4ed] border-b border-[#1c1c18]/8">
+          <div className="max-w-[1440px] mx-auto px-8 md:px-16 py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <p className="font-plex text-sm text-[#5f5e5e] max-w-xl leading-relaxed">
+              {collection.description}
+            </p>
+            {collection.cta_label && collection.cta_link && (
+              <Link
+                to={collection.cta_link}
+                className="shrink-0 font-grotesk font-bold text-xs uppercase tracking-widest text-[#1c1c18] border-b border-[#1c1c18] pb-0.5 hover:text-[#4b0e1e] hover:border-[#4b0e1e] transition-colors"
+              >
+                {collection.cta_label}
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Gallery ──────────────────────────────────── */}
       {collection.gallery && collection.gallery.length > 0 && (
         <div className="max-w-[1440px] mx-auto px-6 py-16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -90,7 +133,7 @@ export default function Collections() {
         </div>
       )}
 
-      {/* ── Products Grid ─────────────────── */}
+      {/* ── Products Grid ─────────────────────────────── */}
       <div className="max-w-[1440px] mx-auto px-6 py-16">
         <div className="flex items-end justify-between mb-12">
           <h2 className="font-unica text-4xl md:text-6xl uppercase tracking-tighter text-[#1c1c18] leading-none">
@@ -119,7 +162,9 @@ export default function Collections() {
         )}
       </div>
 
-      {/* ── Newsletter Strip ─────────────── */}
+      {/* ── Related Collections ───────────────────────── */}
+
+      {/* ── Newsletter Strip ──────────────────────────── */}
       <div className="bg-[#4b0e1e] py-20 px-6">
         <div className="max-w-[640px] mx-auto text-center">
           <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.2em] text-[#fcf9f3]/50 mb-4">

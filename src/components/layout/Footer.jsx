@@ -31,6 +31,7 @@ const footerLinks = {
     { label: 'FAQ', href: '/faq' },
     { label: 'Shipping', href: '/shipping' },
     { label: 'Contact', href: '/contact' },
+    { label: 'Return Policy', href: '/return-policy' },
   ],
   COMPANY: [
     { label: 'About 44LUXURY', href: '/about' },
@@ -55,10 +56,9 @@ export default function Footer() {
           <div className="md:col-span-2">
             <Link to="/" className="block mb-6 hover:opacity-80 transition-opacity">
               <img
-                src="/logo-burgundy-main.jpg"
+                src="/logo-white-main.png"
                 alt="44 LUXURY"
                 className="h-10 w-auto object-contain"
-                style={{ filter: 'url(#remove-white)' }}
               />
             </Link>
             <p className="font-plex text-sm text-[#5f5e5e] max-w-xs leading-relaxed mb-8">
@@ -121,8 +121,9 @@ export default function Footer() {
             </a>
           </div>
           <div className="flex items-center gap-4 font-plex text-xs text-[#5f5e5e]">
-            <Link to="/privacy" className="hover:text-[#fcf9f3] transition-colors">Privacy</Link>
-            <Link to="/terms" className="hover:text-[#fcf9f3] transition-colors">Terms</Link>
+            <Link to="/privacy" className="hover:text-[#fcf9f3] transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-[#fcf9f3] transition-colors">Terms & Conditions</Link>
+            <Link to="/return-policy" className="hover:text-[#fcf9f3] transition-colors">Return Policy</Link>
           </div>
         </div>
       </div>

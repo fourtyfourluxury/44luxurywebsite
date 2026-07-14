@@ -24,6 +24,7 @@ import Contact from './pages/Contact';
 import Shipping from './pages/Shipping';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import ReturnPolicy from './pages/ReturnPolicy';
 import NotFound from './pages/NotFound';
 import AuthCallback from './pages/AuthCallback';
 
@@ -40,6 +41,8 @@ import AdminComplaints from './pages/admin/AdminComplaints';
 import CustomersManager from './pages/admin/CustomersManager';
 import SettingsManager from './pages/admin/SettingsManager';
 import AdminCredentialsManager from './pages/admin/AdminCredentialsManager';
+import PagesManager from './pages/admin/PagesManager';
+import PartnershipsManager from './pages/admin/PartnershipsManager';
 
 function App() {
   const siteLoading = useSiteStore(state => state.loading);
@@ -77,7 +80,7 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-[#fcf9f3] flex flex-col items-center justify-center z-50">
+      <div className="fixed inset-0 bg-[#1c1c18] flex flex-col items-center justify-center z-50">
         <style>{`
           @keyframes loading-bar {
             0% { transform: translateX(-100%); }
@@ -86,14 +89,13 @@ function App() {
         `}</style>
         <div className="text-center select-none">
           <img 
-            src="/logo-black-icon.jpg" 
+            src="/logo-white-main.png" 
             alt="44 LUXURY" 
             className="w-24 h-24 md:w-32 md:h-32 object-contain mx-auto mb-6 animate-pulse"
-            style={{ mixBlendMode: 'multiply' }}
           />
-          <div className="w-16 h-[1px] bg-[#1c1c18]/10 mx-auto overflow-hidden relative">
+          <div className="w-16 h-[1px] bg-[#fcf9f3]/10 mx-auto overflow-hidden relative">
             <div 
-              className="absolute top-0 left-0 h-full w-1/2 bg-[#1c1c18]"
+              className="absolute top-0 left-0 h-full w-1/2 bg-[#fcf9f3]"
               style={{
                 animation: 'loading-bar 1.5s infinite linear'
               }}
@@ -128,6 +130,8 @@ function App() {
                   <Route path="complaints" element={<AdminComplaints />} />
                   <Route path="customers" element={<CustomersManager />} />
                   <Route path="settings" element={<SettingsManager />} />
+                  <Route path="pages" element={<PagesManager />} />
+                  <Route path="partnerships" element={<PartnershipsManager />} />
                   <Route path="admin-credentials" element={<AdminCredentialsManager />} />
                   <Route path="*" element={<AdminDashboard />} />
                 </Routes>
@@ -169,6 +173,7 @@ function App() {
               <Route path="/shipping" element={<Shipping />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
+              <Route path="/return-policy" element={<ReturnPolicy />} />
 
               {/* 404 */}
               <Route path="*" element={<NotFound />} />

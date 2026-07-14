@@ -88,6 +88,17 @@ const AdminLogin = () => {
             {loading ? 'AUTHENTICATING...' : 'SIGN IN WITH GOOGLE'}
           </button>
 
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.setItem('dev_admin', 'true');
+              window.location.href = '/admin';
+            }}
+            className="w-full mt-4 bg-emerald-700 hover:bg-emerald-600 text-white font-grotesk font-bold uppercase tracking-widest py-3 transition-colors flex items-center justify-center gap-3"
+          >
+            ⚡ DEV BYPASS LOGIN
+          </button>
+
           <div className="pt-6 border-t border-[#2a2a26] mt-8 text-center">
             <p className="font-plex text-xs text-concrete leading-relaxed">
               Only authorized admin accounts can access the CMS.

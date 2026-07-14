@@ -12,6 +12,7 @@ import {
   getRecentOrders,
   getLowStockAlerts,
 } from '../../services/admin/dashboardService';
+import { detectMissingColumns } from '../../services/schemaDetector';
 
 const STATUS_STYLES = {
   ORDERED:    { bg: 'bg-blue-500/10',   text: 'text-blue-400',   dot: 'bg-blue-400' },
@@ -59,9 +60,18 @@ export default function AdminDashboard() {
   const [lowStock, setLowStock] = useState([]);
   const [loading, setLoading] = useState(true);
   const [trendDays, setTrendDays] = useState(7);
+  const [missingCols, setMissingCols] = useState([]);
+  const [bannerDismissed, setBannerDismissed] = useState(
+    localStorage.getItem('schema_banner_dismissed') === 'true'
+  );
 
   useEffect(() => {
     loadAll();
+    // Check for missing columns in background
+    detectMissingColumns('products', [
+      'is_best_seller', 'is_limited_edition', 'sort_order', 'video_url',
+      'subcategory', 'season', 'brand', 'material',
+    ]).then(missing => setMissingCols(missing));
   }, [trendDays]);
 
   const loadAll = async () => {
@@ -110,6 +120,42 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-8 max-w-[1400px]">
+      {/* Schema Migration Banner */}
+      {missingCols.length > 0 && !bannerDismissed && (
+        <div className="mb-6 bg-amber-500/10 border border-amber-500/30 rounded-xl p-5 flex items-start gap-4">
+          <div className="w-9 h-9 bg-amber-500/20 rounded-lg flex items-center justify-center shrink-0">
+            <AlertTriangle size={16} className="text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-bold text-amber-400">Database Migration Required</p>
+            <p className="text-[11px] text-amber-400/70 mt-1 leading-relaxed">
+              {missingCols.length} column{missingCols.length > 1 ? 's are' : ' is'} missing from the products table
+              (<code className="text-amber-300/80">{missingCols.join(', ')}</code>).
+              Product publishing will fail until the migration is applied.
+            </p>
+            <div className="mt-3 flex items-center gap-3 flex-wrap">
+              <a
+                href={`https://supabase.com/dashboard/project/vlcwvdgqtsooiwcgdukc/sql`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 bg-amber-500 text-[#0a0a08] px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider hover:bg-amber-400 transition-colors"
+              >
+                Open Supabase SQL Editor →
+              </a>
+              <p className="text-[10px] text-amber-400/50">
+                Run: <code>supabase/migrations/020_complete_schema_audit.sql</code>
+              </p>
+              <button
+                onClick={() => { setBannerDismissed(true); localStorage.setItem('schema_banner_dismissed', 'true'); }}
+                className="ml-auto text-[10px] text-amber-400/40 hover:text-amber-400 transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="mb-8">
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30 mb-1">Welcome back</p>

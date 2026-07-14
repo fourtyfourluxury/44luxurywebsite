@@ -4,10 +4,38 @@ import { getAllCollections, createCollection, updateCollection, deleteCollection
 import { uploadFile, BUCKETS } from '../../services/storageService';
 import { toast } from '../../components/ui/ToastProvider';
 
+const CATEGORY_TYPES = [
+  'new-arrivals', 't-shirts', 'polos', 'hoodies-sweatshirts',
+  'tracksuits', 'denim', 'crop-tops', 'tank-tops', 'caps', 'socks', 'accessories',
+  'summer-collection', 'essentials', 'signature-collection', 'limited-edition', 'seasonal-drops'
+];
+
+const DEFAULT_COLLECTIONS = [
+  { name: 'New Arrivals',          slug: 'new-arrivals',        category: 'unisex', category_type: 'new-arrivals',        sort_order: 1,  seo_title: 'New Arrivals | 44 Luxury', seo_description: 'Shop the latest drops from 44 Luxury — fresh styles, bold pieces.' },
+  { name: 'T-Shirts',              slug: 't-shirts',            category: 'unisex', category_type: 't-shirts',            sort_order: 2,  seo_title: 'T-Shirts | 44 Luxury', seo_description: 'Premium graphic and plain tees by 44 Luxury.' },
+  { name: 'Polos',                 slug: 'polos',               category: 'unisex', category_type: 'polos',               sort_order: 3,  seo_title: 'Polo Shirts | 44 Luxury', seo_description: 'Luxury polo shirts crafted for the streets of Abuja.' },
+  { name: 'Hoodies & Sweatshirts', slug: 'hoodies-sweatshirts', category: 'unisex', category_type: 'hoodies-sweatshirts', sort_order: 4,  seo_title: 'Hoodies & Sweatshirts | 44 Luxury', seo_description: 'Premium hoodies and sweatshirts — built for comfort, dressed for impact.' },
+  { name: 'Tracksuits',            slug: 'tracksuits',          category: 'unisex', category_type: 'tracksuits',          sort_order: 5,  seo_title: 'Tracksuits | 44 Luxury', seo_description: 'Matching tracksuit sets — a 44 Luxury signature.' },
+  { name: 'Denim',                 slug: 'denim',               category: 'unisex', category_type: 'denim',               sort_order: 6,  seo_title: 'Denim Jeans & Shorts | 44 Luxury', seo_description: 'Jeans and jean shorts — raw African luxury in every stitch.' },
+  { name: 'Crop Tops',             slug: 'crop-tops',           category: 'women',  category_type: 'crop-tops',           sort_order: 7,  seo_title: 'Crop Tops | 44 Luxury', seo_description: 'Bold crop tops from 44 Luxury — made for the unapologetic.' },
+  { name: 'Tank Tops',             slug: 'tank-tops',           category: 'unisex', category_type: 'tank-tops',           sort_order: 8,  seo_title: 'Tank Tops | 44 Luxury', seo_description: 'Everyday luxury tank tops by 44 Luxury.' },
+  { name: 'Caps',                  slug: 'caps',                category: 'unisex', category_type: 'caps',                sort_order: 9,  seo_title: 'Caps | 44 Luxury', seo_description: 'Statement caps — the finishing touch to every 44 Luxury fit.' },
+  { name: 'Socks',                 slug: 'socks',               category: 'unisex', category_type: 'socks',               sort_order: 10, seo_title: 'Socks | 44 Luxury', seo_description: 'Luxury socks — small detail, big statement.' },
+  { name: 'Accessories',           slug: 'accessories',         category: 'unisex', category_type: 'accessories',         sort_order: 11, seo_title: 'Accessories | 44 Luxury', seo_description: 'Curated accessories to complete the 44 Luxury look.' },
+  
+  // Marketing & Theme Collections (from requested Navigation structure)
+  { name: 'Summer Collection',     slug: 'summer-collection',     category: 'unisex', category_type: 'summer-collection',     sort_order: 12, seo_title: 'Summer Collection | 44 Luxury', seo_description: 'Embrace the heat with the 44 Luxury Summer Collection.' },
+  { name: 'Essentials',            slug: 'essentials',            category: 'unisex', category_type: 'essentials',            sort_order: 13, seo_title: 'Essentials | 44 Luxury', seo_description: 'Core daily-wear garments crafted from high-weight premium materials.' },
+  { name: 'Signature Collection',  slug: 'signature-collection',  category: 'unisex', category_type: 'signature-collection',  sort_order: 14, seo_title: 'Signature Collection | 44 Luxury', seo_description: 'The definitive cuts and designs representing the heritage of 44 Luxury.' },
+  { name: 'Limited Edition',       slug: 'limited-edition',       category: 'unisex', category_type: 'limited-edition',       sort_order: 15, seo_title: 'Limited Edition | 44 Luxury', seo_description: 'Extremely limited quantities. Once sold out, they are gone forever.' },
+  { name: 'Seasonal Drops',        slug: 'seasonal-drops',        category: 'unisex', category_type: 'seasonal-drops',        sort_order: 16, seo_title: 'Seasonal Drops | 44 Luxury', seo_description: 'Exclusive capsules drop dynamically matching local and global style schedules.' },
+];
+
 const EMPTY = {
-  name: '', slug: '', category: 'unisex', description: '',
+  name: '', slug: '', category: 'unisex', category_type: '', description: '',
   heroImage: '', heroHeadline: '', heroSubheadline: '',
   ctaLabel: 'EXPLORE', ctaLink: '/shop', status: 'DRAFT',
+  seo_title: '', seo_description: '', seo_keywords: '',
 };
 
 // Convert snake_case DB data → camelCase for UI
@@ -21,21 +49,22 @@ const fromDb = (col) => ({
 });
 
 // Convert camelCase UI data → snake_case for DB
-const toDb = (panel) => {
-  const payload = {
-    name: panel.name,
-    slug: panel.slug,
-    category: panel.category,
-    description: panel.description,
-    status: panel.status,
-    hero_image: panel.heroImage || null,
-    hero_headline: panel.heroHeadline || null,
-    hero_subheadline: panel.heroSubheadline || null,
-    cta_label: panel.ctaLabel || 'EXPLORE',
-    cta_link: panel.ctaLink || '/shop',
-  };
-  return payload;
-};
+const toDb = (panel) => ({
+  name: panel.name,
+  slug: panel.slug,
+  category: panel.category,
+  category_type: panel.category_type || null,
+  description: panel.description,
+  status: panel.status,
+  hero_image: panel.heroImage || null,
+  hero_headline: panel.heroHeadline || null,
+  hero_subheadline: panel.heroSubheadline || null,
+  cta_label: panel.ctaLabel || 'EXPLORE',
+  cta_link: panel.ctaLink || '/shop',
+  seo_title: panel.seo_title || null,
+  seo_description: panel.seo_description || null,
+  seo_keywords: panel.seo_keywords || null,
+});
 
 const Field = ({ label, children }) => (
   <div>
@@ -52,10 +81,11 @@ export default function CollectionsManager() {
   const [collections, setCollections] = useState([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
-  const [panel, setPanel]             = useState(null); // null | {...collectionData}
+  const [panel, setPanel]             = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving]           = useState(false);
   const [uploading, setUploading]     = useState(false);
+  const [seeding, setSeeding]         = useState(false);
   const fileRef = useRef();
 
   useEffect(() => { load(); }, []);
@@ -105,6 +135,21 @@ export default function CollectionsManager() {
     load();
   };
 
+  const handleSeedCollections = async () => {
+    setSeeding(true);
+    const existingSlugs = new Set(collections.map(c => c.slug));
+    const toCreate = DEFAULT_COLLECTIONS.filter(c => !existingSlugs.has(c.slug));
+    if (toCreate.length === 0) { toast('All default collections already exist', 'info'); setSeeding(false); return; }
+    let created = 0;
+    for (const col of toCreate) {
+      const result = await createCollection({ ...col, status: 'ACTIVE' });
+      if (!result.error) created++;
+    }
+    toast(`Created ${created} collection${created !== 1 ? 's' : ''}`, 'success');
+    setSeeding(false);
+    load();
+  };
+
   const filtered = collections.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -114,11 +159,18 @@ export default function CollectionsManager() {
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30 mb-1">Content</p>
           <h1 className="text-3xl font-bold text-white tracking-tight">Collections</h1>
+          <p className="text-[12px] text-white/30 mt-1">Manage product categories — banners, descriptions, SEO &amp; featured items.</p>
         </div>
-        <button onClick={openNew}
-          className="flex items-center gap-2 bg-[#c9a96e] text-[#0a0a08] px-4 py-2.5 rounded-xl text-[12px] font-bold uppercase tracking-wider hover:bg-[#d4b87e] transition-colors">
-          <Plus size={15} /> New Collection
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={handleSeedCollections} disabled={seeding}
+            className="flex items-center gap-2 bg-white/[0.06] text-white/60 border border-white/[0.08] px-4 py-2.5 rounded-xl text-[12px] font-semibold hover:bg-white/10 hover:text-white transition-colors disabled:opacity-40">
+            {seeding ? 'Seeding...' : '⚡ Seed Default Collections'}
+          </button>
+          <button onClick={openNew}
+            className="flex items-center gap-2 bg-[#c9a96e] text-[#0a0a08] px-4 py-2.5 rounded-xl text-[12px] font-bold uppercase tracking-wider hover:bg-[#d4b87e] transition-colors">
+            <Plus size={15} /> New Collection
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -204,7 +256,7 @@ export default function CollectionsManager() {
                 <Field label="URL Slug">
                   <Input value={panel.slug} onChange={e => set('slug', e.target.value)} placeholder="core-essentials-ss25" />
                 </Field>
-                <Field label="Category">
+                <Field label="Gender">
                   <select value={panel.category || 'unisex'} onChange={e => set('category', e.target.value)}
                     className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors">
                     <option value="men">Men</option>
@@ -213,6 +265,15 @@ export default function CollectionsManager() {
                   </select>
                 </Field>
               </div>
+              <Field label="Category Type">
+                <select value={panel.category_type || ''} onChange={e => set('category_type', e.target.value)}
+                  className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors">
+                  <option value="">— None / Custom —</option>
+                  {CATEGORY_TYPES.map(t => (
+                    <option key={t} value={t}>{t.replace(/-/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</option>
+                  ))}
+                </select>
+              </Field>
               <Field label="Description">
                 <textarea value={panel.description || ''} onChange={e => set('description', e.target.value)} rows={3} placeholder="What defines this collection..."
                   className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white placeholder-white/20 outline-none resize-none transition-colors" />
@@ -265,6 +326,21 @@ export default function CollectionsManager() {
                 </Field>
                 <Field label="CTA Link">
                   <Input value={panel.ctaLink || ''} onChange={e => set('ctaLink', e.target.value)} placeholder="/shop" />
+                </Field>
+              </div>
+
+              {/* SEO Section */}
+              <div className="border-t border-white/[0.06] pt-5 space-y-4">
+                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">SEO Metadata</p>
+                <Field label="SEO Title">
+                  <Input value={panel.seo_title || ''} onChange={e => set('seo_title', e.target.value)} placeholder="T-Shirts | 44 Luxury" />
+                </Field>
+                <Field label="Meta Description">
+                  <textarea value={panel.seo_description || ''} onChange={e => set('seo_description', e.target.value)} rows={2} placeholder="Short description for search engines (150–160 chars)..."
+                    className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white placeholder-white/20 outline-none resize-none transition-colors" />
+                </Field>
+                <Field label="Keywords (comma-separated)">
+                  <Input value={panel.seo_keywords || ''} onChange={e => set('seo_keywords', e.target.value)} placeholder="44 luxury, t-shirts, african streetwear, abuja" />
                 </Field>
               </div>
             </div>

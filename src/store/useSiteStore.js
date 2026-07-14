@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import * as productService from '../services/productService';
 import * as collectionService from '../services/collectionService';
 import * as homepageService from '../services/homepageService';
-import { subscribeToHomepageConfig, subscribeToHeroSlides } from '../services/realtimeService';
+import { subscribeToHomepageConfig, subscribeToHeroSlides, subscribeToProducts, subscribeToCollections } from '../services/realtimeService';
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
@@ -245,7 +245,7 @@ export const useSiteStore = create(
 
       // ─── Subscribe to Homepage Realtime Updates ──────────────
       subscribeToHomepageUpdates: () => {
-        console.log('📡 Subscribing to homepage realtime updates...');
+        console.log('📡 Subscribing to homepage & data realtime updates...');
         
         // Subscribe to homepage config changes
         const configChannel = subscribeToHomepageConfig(({ config }) => {
@@ -270,16 +270,29 @@ export const useSiteStore = create(
         // Subscribe to hero slides changes
         const slidesChannel = subscribeToHeroSlides(async () => {
           console.log('🔄 Realtime: Hero slides changed, refetching...');
-          // Refetch all slides to maintain correct order
           const { slides } = await homepageService.getHeroSlides();
           set({ heroSlides: slides || [] });
         });
 
+        // Subscribe to products changes
+        const productsChannel = subscribeToProducts(() => {
+          console.log('🔄 Realtime: Products table updated, refetching...');
+          get().refreshProducts();
+        });
+
+        // Subscribe to collections changes
+        const collectionsChannel = subscribeToCollections(() => {
+          console.log('🔄 Realtime: Collections table updated, refetching...');
+          get().refreshCollections();
+        });
+
         // Return cleanup function
         return () => {
-          console.log('🔌 Unsubscribing from homepage updates');
+          console.log('🔌 Unsubscribing from realtime updates');
           configChannel.unsubscribe();
           slidesChannel.unsubscribe();
+          if (productsChannel) productsChannel.unsubscribe();
+          if (collectionsChannel) collectionsChannel.unsubscribe();
         };
       },
 

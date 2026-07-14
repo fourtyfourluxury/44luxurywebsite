@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase';
 
 // Storage bucket names
 export const BUCKETS = {
-  PRODUCTS: 'products',
+  PRODUCTS: 'product-images',
   COLLECTIONS: 'collections',
   HOMEPAGE: 'homepage',
   HERO_SLIDES: 'hero-slides',

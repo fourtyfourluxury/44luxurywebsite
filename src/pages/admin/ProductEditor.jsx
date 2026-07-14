@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Check, ChevronRight, Upload, Trash2, ArrowLeft, ArrowRight, ImageIcon } from 'lucide-react';
+import { X, Check, Upload, Trash2, ArrowLeft, ArrowRight, ImageIcon, Video } from 'lucide-react';
 import { createProduct, updateProduct, generateSKU, validateProductData } from '../../services/admin/productAdminService';
 import { uploadFile, BUCKETS } from '../../services/storageService';
 import { getAllCollections } from '../../services/admin/collectionAdminService';
+import { toast } from '../../components/ui/ToastProvider';
+import { useSiteStore } from '../../store/useSiteStore';
 
 const STEPS = [
   { id: 1, label: 'Basic Info',  desc: 'Name, category, collection' },
@@ -14,6 +16,18 @@ const STEPS = [
 
 const SIZES = ['XS','S','M','L','XL','XXL','XXXL'];
 const PRESET_COLORS = ['Black','White','Navy','Beige','Grey','Brown','Olive','Burgundy','Cream'];
+const PRODUCT_CATEGORIES = [
+  'T-Shirts',
+  'Polos',
+  'Hoodies & Sweatshirts',
+  'Tracksuits',
+  'Denim',
+  'Crop Tops',
+  'Tank Tops',
+  'Caps',
+  'Socks',
+  'Accessories'
+];
 
 const Field = ({ label, required, error, children }) => (
   <div>
@@ -48,15 +62,19 @@ export default function ProductEditor({ product, onClose, onSave }) {
   const [saving, setSaving]     = useState(false);
   const [errors, setErrors]     = useState({});
   const [customColor, setCustomColor] = useState('');
+  const [productId]             = useState(() => product?.id || crypto.randomUUID());
   const fileInputRef = useRef();
 
+  const videoInputRef = useRef();
+
   const [form, setForm] = useState({
-    name: '',  sku: '',  category: 'men',  collection_id: '',
-    short_description: '',  description: '',
-    images: [],
-    sizes: [],  colors: [],
-    price: '',  compare_price: '',  stock: '',
-    is_new: false,  is_featured: false,  status: 'DRAFT',
+    name: '', sku: '', category: 'men', collection_id: '',
+    subcategory: '', season: '',
+    short_description: '', description: '',
+    images: [], video_url: '',
+    sizes: [], colors: [],
+    price: '', compare_price: '', stock: '',
+    is_new: false, is_featured: false, is_best_seller: false, is_limited_edition: false, status: 'DRAFT',
   });
 
   useEffect(() => {
@@ -67,9 +85,12 @@ export default function ProductEditor({ product, onClose, onSave }) {
         sku: product.sku || '',
         category: product.category || 'men',
         collection_id: product.collection_id || '',
+        subcategory: product.subcategory || '',
+        season: product.season || '',
         short_description: product.short_description || '',
         description: product.description || '',
         images: product.images || [],
+        video_url: product.video_url || '',
         sizes: product.sizes || [],
         colors: product.colors || [],
         price: product.price || '',
@@ -77,6 +98,8 @@ export default function ProductEditor({ product, onClose, onSave }) {
         stock: product.stock || '',
         is_new: product.is_new || false,
         is_featured: product.is_featured || false,
+        is_best_seller: product.is_best_seller || false,
+        is_limited_edition: product.is_limited_edition || false,
         status: product.status || 'DRAFT',
       });
     }
@@ -87,17 +110,118 @@ export default function ProductEditor({ product, onClose, onSave }) {
 
   const handleImageUpload = async (files) => {
     if (!files?.length) return;
+    
+    // File validation (STEP 2: Allowed types: jpg, jpeg, png, webp, avif; size up to 30MB)
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
+    const maxSizeBytes = 30 * 1024 * 1024; // 30MB
+    
     setUploading(true);
+    setErrors(prev => ({ ...prev, images: null }));
+    
+    // Developer Logging (STEP 9)
+    console.log('Uploading...');
+    
     const uploaded = [];
-    for (const file of Array.from(files)) {
-      const { url, error } = await uploadFile(file, { bucket: BUCKETS.PRODUCTS, folder: 'products' });
-      if (url) uploaded.push(url);
+    try {
+      for (const file of Array.from(files)) {
+        const extension = file.name.split('.').pop().toLowerCase();
+        if (!allowedExtensions.includes(extension)) {
+          throw new Error(`Invalid file format: .${extension}. Allowed formats: ${allowedExtensions.join(', ')}`);
+        }
+        if (file.size > maxSizeBytes) {
+          throw new Error(`File is too large: ${(file.size / (1024 * 1024)).toFixed(1)}MB. Maximum allowed: 30MB`);
+        }
+        
+        // Custom filename & path format (STEP 5: product-images/{productId}/{timestamp}-{filename})
+        const timestamp = Date.now();
+        const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const customFileName = `${timestamp}-${sanitizedName}`;
+        
+        const { url, error } = await uploadFile(file, {
+          bucket: BUCKETS.PRODUCTS, // product-images
+          folder: productId,
+          fileName: customFileName
+        });
+        
+        if (error) {
+          throw new Error(error);
+        }
+        
+        if (url) {
+          // Developer Logging (STEP 9)
+          console.log(`Image URL: ${url}`);
+          uploaded.push(url);
+        }
+      }
+      
+      // Developer Logging (STEP 9)
+      console.log('Upload complete');
+      
+      const newImages = [...form.images, ...uploaded];
+      set('images', newImages);
+    } catch (err) {
+      console.error('Full error stack:', err);
+      // STEP 8: If upload fails, display Upload Failed with actual Supabase error.
+      toast(`Upload Failed: ${err.message}`, 'error');
+      setErrors(prev => ({ ...prev, images: `Upload Failed: ${err.message}` }));
+    } finally {
+      setUploading(false);
     }
-    set('images', [...form.images, ...uploaded]);
-    setUploading(false);
   };
 
   const removeImage = (idx) => set('images', form.images.filter((_, i) => i !== idx));
+
+  const moveImage = (fromIdx, toIdx) => {
+    const updated = [...form.images];
+    const [moved] = updated.splice(fromIdx, 1);
+    updated.splice(toIdx, 0, moved);
+    set('images', updated);
+  };
+
+  const handleVideoUpload = async (files) => {
+    if (!files?.length) return;
+    
+    const maxVideoSize = 100 * 1024 * 1024; // 100MB
+    setUploading(true);
+    setErrors(prev => ({ ...prev, video: null }));
+    
+    // Developer Logging (STEP 9)
+    console.log('Uploading...');
+    
+    try {
+      const file = files[0];
+      if (file.size > maxVideoSize) {
+        throw new Error(`Video is too large: ${(file.size / (1024 * 1024)).toFixed(1)}MB. Max size: 100MB`);
+      }
+      
+      const timestamp = Date.now();
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const customFileName = `${timestamp}-${sanitizedName}`;
+      
+      const { url, error } = await uploadFile(file, {
+        bucket: BUCKETS.VIDEOS,
+        folder: productId,
+        fileName: customFileName
+      });
+      
+      if (error) {
+        throw new Error(error);
+      }
+      
+      if (url) {
+        // Developer Logging (STEP 9)
+        console.log(`Video URL: ${url}`);
+        set('video_url', url);
+        // Developer Logging (STEP 9)
+        console.log('Upload complete');
+      }
+    } catch (err) {
+      console.error('Full error stack:', err);
+      toast(`Upload Failed: ${err.message}`, 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const addColor = (c) => { if (c && !form.colors.includes(c)) { set('colors', [...form.colors, c]); setCustomColor(''); } };
 
@@ -123,17 +247,44 @@ export default function ProductEditor({ product, onClose, onSave }) {
     setSaving(true);
     const payload = {
       ...form,
+      id: productId, // Align product ID with the generated folder ID
       price: parseFloat(form.price) || 0,
       compare_price: form.compare_price ? parseFloat(form.compare_price) : null,
       stock: parseInt(form.stock) || 0,
       collection_id: form.collection_id || null,
-      status: publish ? 'ACTIVE' : form.status,
+      subcategory: form.subcategory || null,
+      season: form.season || null,
+      video_url: form.video_url || null,
+      status: publish ? (form.status === 'DRAFT' ? 'ACTIVE' : form.status) : 'DRAFT',
     };
+    
     const result = product
       ? await updateProduct(product.id, payload)
       : await createProduct(payload);
+      
     setSaving(false);
-    if (result.error) { setErrors({ submit: result.error }); return; }
+    
+    if (result.error) {
+      // Developer Logging (STEP 9)
+      console.error('Full error stack:', result.error);
+      setErrors({ submit: result.error });
+      return;
+    }
+    
+    // Developer Logging (STEP 9)
+    console.log('Database updated');
+    if (publish) {
+      console.log('Product published');
+    }
+    
+    // Refresh storefront state and cache instantly (STEP 7: 4. Refresh product cache, 5. Homepage updates instantly)
+    try {
+      await useSiteStore.getState().refreshProducts();
+      await useSiteStore.getState().refreshHomepage();
+    } catch (cacheErr) {
+      console.warn('Cache refresh warning:', cacheErr);
+    }
+    
     onSave();
   };
 
@@ -194,7 +345,7 @@ export default function ProductEditor({ product, onClose, onSave }) {
                 <Input value={form.name} onChange={e => { set('name', e.target.value); if (!form.sku) set('sku', generateSKU(e.target.value, form.category)); }} placeholder="e.g. Signature Cargo Trousers" error={errors.name} />
               </Field>
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Category" required error={errors.category}>
+                <Field label="Gender" required error={errors.category}>
                   <div className="flex gap-2">
                     {['men','women','unisex'].map(c => (
                       <button key={c} type="button" onClick={() => set('category', c)}
@@ -205,17 +356,31 @@ export default function ProductEditor({ product, onClose, onSave }) {
                     ))}
                   </div>
                 </Field>
+                <Field label="Product Category" error={errors.subcategory}>
+                  <select value={form.subcategory} onChange={e => set('subcategory', e.target.value)}
+                    className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors">
+                    <option value="">— Select Category —</option>
+                    {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Collection">
+                  <select value={form.collection_id} onChange={e => set('collection_id', e.target.value)}
+                    className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors">
+                    <option value="">— No Collection —</option>
+                    {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </Field>
+                <Field label="Season">
+                  <Input value={form.season} onChange={e => set('season', e.target.value)} placeholder="e.g. SS25, FW25, Essentials" />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <Field label="SKU (optional)">
                   <Input value={form.sku} onChange={e => set('sku', e.target.value)} placeholder="Auto-generated" />
                 </Field>
               </div>
-              <Field label="Collection">
-                <select value={form.collection_id} onChange={e => set('collection_id', e.target.value)}
-                  className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors">
-                  <option value="">— No Collection —</option>
-                  {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </Field>
               <Field label="Short Description">
                 <Textarea rows={2} value={form.short_description} onChange={e => set('short_description', e.target.value)} placeholder="One or two lines shown on product cards..." />
               </Field>
@@ -245,15 +410,61 @@ export default function ProductEditor({ product, onClose, onSave }) {
                 <p className="text-[11px] text-white/25 mt-1">JPG, PNG, WEBP — up to 30MB each</p>
                 <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleImageUpload(e.target.files)} />
               </div>
-              {form.images.length > 0 && (
+
+              {/* Video upload */}
+              <div>
+                <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-3">Product Video (optional)</p>
+                {form.video_url ? (
+                  <div className="flex items-center gap-3 p-4 bg-[#141410] border border-white/[0.06] rounded-xl">
+                    <Video size={18} className="text-blue-400 shrink-0" />
+                    <p className="text-[12px] text-white/60 flex-1 truncate">{form.video_url}</p>
+                    <button onClick={() => set('video_url', '')} className="text-red-400 hover:text-red-300 transition-colors"><Trash2 size={14} /></button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => videoInputRef.current?.click()}
+                    className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400/30 hover:bg-blue-400/[0.02] transition-all"
+                  >
+                    <Video size={20} className="text-white/20 mx-auto mb-2" />
+                    <p className="text-[12px] text-white/40">{uploading ? 'Uploading...' : 'Click to upload video'}</p>
+                    <p className="text-[10px] text-white/20 mt-1">MP4, WEBM, MOV — up to 100MB</p>
+                  </div>
+                )}
+                <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={e => handleVideoUpload(e.target.files)} />
+              </div>
+               {form.images.length > 0 && (
                 <div className="grid grid-cols-4 gap-3">
                   {form.images.map((url, i) => (
-                    <div key={i} className="relative group aspect-square rounded-xl overflow-hidden bg-white/5">
+                    <div key={i} className="relative group aspect-square rounded-xl overflow-hidden bg-white/5 border border-white/[0.04] hover:border-white/20 transition-all">
                       <img src={url} alt="" className="w-full h-full object-cover" />
                       {i === 0 && <span className="absolute top-2 left-2 bg-[#c9a96e] text-[#0a0a08] text-[9px] font-bold px-2 py-0.5 rounded-full">COVER</span>}
-                      <button onClick={() => removeImage(i)} className="absolute top-2 right-2 w-7 h-7 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600">
+                      
+                      {/* Delete button */}
+                      <button type="button" onClick={() => removeImage(i)} className="absolute top-2 right-2 w-7 h-7 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md">
                         <Trash2 size={12} className="text-white" />
                       </button>
+
+                      {/* Reorder buttons */}
+                      <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {i > 0 && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveImage(i, i - 1); }}
+                            className="w-6 h-6 bg-[#141410] border border-white/20 text-white rounded-full flex items-center justify-center hover:bg-[#c9a96e] hover:text-[#0a0a08] transition-colors shadow-lg"
+                          >
+                            <ArrowLeft size={10} />
+                          </button>
+                        )}
+                        {i < form.images.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveImage(i, i + 1); }}
+                            className="w-6 h-6 bg-[#141410] border border-white/20 text-white rounded-full flex items-center justify-center hover:bg-[#c9a96e] hover:text-[#0a0a08] transition-colors shadow-lg"
+                          >
+                            <ArrowRight size={10} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -321,8 +532,13 @@ export default function ProductEditor({ product, onClose, onSave }) {
                 <Input type="number" value={form.stock} onChange={e => set('stock', e.target.value)} placeholder="0" error={errors.stock} />
               </Field>
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Tags</p>
-                {[{ k: 'is_new', label: 'New Arrival', desc: 'Shows "NEW" badge and appears in New Arrivals section' }, { k: 'is_featured', label: 'Featured', desc: 'Appears in the Featured Products section on homepage' }].map(t => (
+                <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Tags & Visibility</p>
+                {[
+                  { k: 'is_new',            label: 'New Arrival',     desc: 'Shows "NEW" badge and appears in New Arrivals section' },
+                  { k: 'is_featured',       label: 'Featured',        desc: 'Appears in the Featured Products section on homepage' },
+                  { k: 'is_best_seller',    label: 'Best Seller',     desc: 'Shows "BEST SELLER" badge on product cards' },
+                  { k: 'is_limited_edition', label: 'Limited Edition', desc: 'Shows "LIMITED" badge — marks as exclusive drop' },
+                ].map(t => (
                   <label key={t.k} className="flex items-start gap-4 p-4 bg-[#141410] border border-white/[0.06] rounded-xl cursor-pointer hover:border-white/10 transition-colors">
                     <div onClick={() => set(t.k, !form[t.k])} className={`w-10 h-6 rounded-full relative transition-colors shrink-0 mt-0.5 cursor-pointer ${form[t.k] ? 'bg-[#c9a96e]' : 'bg-white/10'}`}>
                       <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${form[t.k] ? 'left-5' : 'left-1'}`} />
@@ -335,12 +551,17 @@ export default function ProductEditor({ product, onClose, onSave }) {
                 ))}
               </div>
               <Field label="Status">
-                <div className="flex gap-2">
-                  {[['DRAFT', 'Draft — not visible on storefront'], ['ACTIVE', 'Active — live on storefront'], ['SOLD_OUT', 'Sold Out']].map(([v, l]) => (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    ['DRAFT', 'Draft'],
+                    ['ACTIVE', 'Active'],
+                    ['PRE-ORDER', 'Pre-Order'],
+                    ['SOLD OUT', 'Sold Out']
+                  ].map(([v, l]) => (
                     <button key={v} type="button" onClick={() => set('status', v)}
-                      className={`flex-1 py-3 px-3 rounded-xl text-[11px] font-semibold border transition-all text-center
+                      className={`py-3 px-3 rounded-xl text-[11px] font-semibold border transition-all text-center
                         ${form.status === v ? 'bg-white/10 text-white border-white/20' : 'border-white/[0.06] text-white/30 hover:border-white/15'}`}>
-                      {v}
+                      {l}
                     </button>
                   ))}
                 </div>
@@ -358,9 +579,18 @@ export default function ProductEditor({ product, onClose, onSave }) {
                   {form.images[0] ? <img src={form.images[0]} className="w-full h-full object-cover" alt="" /> : <ImageIcon size={28} className="text-white/15 m-auto mt-20" />}
                 </div>
                 <div className="space-y-3 flex-1">
-                  {form.is_new && <span className="inline-block bg-[#c9a96e]/20 text-[#c9a96e] text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">New Arrival</span>}
+                  <div className="flex flex-wrap gap-1.5 animate-pulse">
+                    {form.is_new && <span className="inline-block bg-[#c9a96e]/20 text-[#c9a96e] text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">New Arrival</span>}
+                    {form.is_featured && <span className="inline-block bg-[#c9a96e]/20 text-[#c9a96e] text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">Featured</span>}
+                    {form.is_best_seller && <span className="inline-block bg-[#c9a96e]/20 text-[#c9a96e] text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">Best Seller</span>}
+                  </div>
                   <p className="text-xl font-bold text-white">{form.name || '—'}</p>
-                  <p className="text-[12px] text-white/40">{form.category?.toUpperCase()} {form.collection_id ? `· ${collections.find(c=>c.id===form.collection_id)?.name}` : ''}</p>
+                  <p className="text-[12px] text-white/40">
+                    {form.category?.toUpperCase()}
+                    {form.subcategory ? ` · ${form.subcategory}` : ''}
+                    {form.collection_id ? ` · ${collections.find(c=>c.id===form.collection_id)?.name}` : ''}
+                    {form.season ? ` · ${form.season}` : ''}
+                  </p>
                   <div className="flex items-baseline gap-3">
                     <p className="text-xl font-bold text-white">₦{form.price ? parseFloat(form.price).toLocaleString() : '0'}</p>
                     {form.compare_price && <p className="text-[13px] text-white/30 line-through">₦{parseFloat(form.compare_price).toLocaleString()}</p>}

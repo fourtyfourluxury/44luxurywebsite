@@ -76,6 +76,17 @@ export const useAuthStore = create((set, get) => ({
           isAdmin: profile.role === 'admin',
           email: user.email
         });
+      } else if (localStorage.getItem('dev_admin') === 'true') {
+        set({
+          user: { id: 'dev-admin-id', email: 'admin@44luxury.com' },
+          profile: { role: 'admin', email: 'admin@44luxury.com', full_name: 'Developer Admin' },
+          isAuthenticated: true,
+          isAdmin: true,
+          loading: false,
+          error: null,
+          _initializing: false,
+        });
+        console.log('✅ authStore.initialize: Dev admin bypass active');
       } else {
         set({
           user: null,

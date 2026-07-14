@@ -1,12 +1,47 @@
 import { supabase } from '../../lib/supabase';
 import { deleteFileByUrl, isSupabaseStorageUrl } from '../storageService';
+import { sanitizeForSchema } from '../schemaDetector';
 
 /**
- * Admin Product Service
- * Handles product management operations for admin
+ * Admin Product Service — Schema-safe version
+ *
+ * All write operations only include columns that exist in the DB.
+ * The SAFE_COLUMNS set controls exactly what gets sent to Supabase,
+ * preventing "column not found in schema cache" errors.
  */
 
-// Get all products (admin view - includes drafts)
+// ─── Column Safety ────────────────────────────────────────────────────────────
+// These are the columns that DEFINITELY exist (base schema + migration 020).
+// If a column hasn't been migrated yet, remove it from this set.
+const SAFE_PRODUCT_COLUMNS = new Set([
+  'name', 'sku', 'price', 'compare_price', 'category', 'collection_id',
+  'status', 'sizes', 'colors', 'images', 'description', 'short_description',
+  'is_new', 'is_featured', 'stock', 'seo_title', 'seo_description',
+  // Columns from migration 017/020 — safe after running migration 020
+  'is_best_seller', 'is_limited_edition', 'sort_order', 'video_url',
+  'subcategory', 'season', 'brand', 'material', 'weight', 'tags',
+]);
+
+/**
+ * Strips any keys from a payload that are not in SAFE_PRODUCT_COLUMNS.
+ * Also removes undefined values and internal fields like id, created_at, updated_at.
+ */
+const sanitizePayload = (data) => {
+  const EXCLUDED = new Set(['id', 'created_at', 'updated_at', 'search_vector', 'collection']);
+  const out = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (EXCLUDED.has(k)) continue;
+    if (!SAFE_PRODUCT_COLUMNS.has(k)) {
+      console.warn(`[productAdminService] Stripping unknown column: "${k}"`);
+      continue;
+    }
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
+};
+
+// ─── Read ────────────────────────────────────────────────────────────────────
+
 export const getAllProducts = async (filters = {}) => {
   try {
     let query = supabase
@@ -14,29 +49,45 @@ export const getAllProducts = async (filters = {}) => {
       .select(`
         *,
         collection:collections(id, name, slug)
-      `)
-      .order('created_at', { ascending: false });
+      `);
 
-    // Apply filters
-    if (filters.status) {
-      query = query.eq('status', filters.status);
-    }
+    // We'll try to order by sort_order first, but catch if it fails because column doesn't exist
+    query = query.order('sort_order', { ascending: true, nullsFirst: false })
+                 .order('created_at', { ascending: false });
 
-    if (filters.category) {
-      query = query.eq('category', filters.category);
-    }
-
-    if (filters.collectionId) {
-      query = query.eq('collection_id', filters.collectionId);
-    }
-
+    if (filters.status)       query = query.eq('status', filters.status);
+    if (filters.category)     query = query.eq('category', filters.category);
+    if (filters.collectionId) query = query.eq('collection_id', filters.collectionId);
     if (filters.search) {
       query = query.or(`name.ilike.%${filters.search}%,sku.ilike.%${filters.search}%`);
     }
 
     const { data, error } = await query;
+    
+    if (error) {
+      if (error.message && (error.message.includes('sort_order') || error.code === '42703')) {
+        console.warn('⚠️ sort_order column missing in products schema, falling back...');
+        let fallbackQuery = supabase
+          .from('products')
+          .select(`
+            *,
+            collection:collections(id, name, slug)
+          `)
+          .order('created_at', { ascending: false });
 
-    if (error) throw error;
+        if (filters.status)       fallbackQuery = fallbackQuery.eq('status', filters.status);
+        if (filters.category)     fallbackQuery = fallbackQuery.eq('category', filters.category);
+        if (filters.collectionId) fallbackQuery = fallbackQuery.eq('collection_id', filters.collectionId);
+        if (filters.search) {
+          fallbackQuery = fallbackQuery.or(`name.ilike.%${filters.search}%,sku.ilike.%${filters.search}%`);
+        }
+
+        const { data: fbData, error: fbError } = await fallbackQuery;
+        if (fbError) throw fbError;
+        return { products: fbData, error: null };
+      }
+      throw error;
+    }
 
     return { products: data, error: null };
   } catch (error) {
@@ -45,20 +96,43 @@ export const getAllProducts = async (filters = {}) => {
   }
 };
 
-// Create new product
-export const createProduct = async (productData) => {
+export const getProductById = async (productId) => {
   try {
     const { data, error } = await supabase
       .from('products')
-      .insert(productData)
-      .select(`
-        *,
-        collection:collections(id, name, slug)
-      `)
+      .select(`*, collection:collections(id, name, slug)`)
+      .eq('id', productId)
       .single();
 
     if (error) throw error;
+    return { product: data, error: null };
+  } catch (error) {
+    console.error('Get product by ID error:', error);
+    return { product: null, error: error.message };
+  }
+};
 
+// ─── Create ──────────────────────────────────────────────────────────────────
+
+export const createProduct = async (productData) => {
+  try {
+    // Use live schema detection: only include columns that actually exist in the DB
+    const payload = await sanitizeForSchema('products', productData);
+    // Apply static guard as a second layer of safety
+    const safePayload = sanitizePayload(payload);
+
+    // Explicitly add ID if provided (e.g. from generated image folders)
+    if (productData.id) {
+      safePayload.id = productData.id;
+    }
+
+    const { data, error } = await supabase
+      .from('products')
+      .insert(safePayload)
+      .select(`*, collection:collections(id, name, slug)`)
+      .single();
+
+    if (error) throw error;
     return { product: data, error: null };
   } catch (error) {
     console.error('Create product error:', error);
@@ -66,21 +140,22 @@ export const createProduct = async (productData) => {
   }
 };
 
-// Update product
+// ─── Update ──────────────────────────────────────────────────────────────────
+
 export const updateProduct = async (productId, updates) => {
   try {
+    // Use live schema detection: only include columns that actually exist in the DB
+    const payload = await sanitizeForSchema('products', updates);
+    const safePayload = sanitizePayload(payload);
+
     const { data, error } = await supabase
       .from('products')
-      .update(updates)
+      .update(safePayload)
       .eq('id', productId)
-      .select(`
-        *,
-        collection:collections(id, name, slug)
-      `)
+      .select(`*, collection:collections(id, name, slug)`)
       .single();
 
     if (error) throw error;
-
     return { product: data, error: null };
   } catch (error) {
     console.error('Update product error:', error);
@@ -88,34 +163,30 @@ export const updateProduct = async (productId, updates) => {
   }
 };
 
-// Delete product
+// ─── Delete ──────────────────────────────────────────────────────────────────
+
 export const deleteProduct = async (productId) => {
   try {
-    // Fetch product to get images before deleting
     const { data: product } = await supabase
       .from('products')
-      .select('images')
+      .select('images, video_url')
       .eq('id', productId)
       .single();
 
-    // Delete images from Supabase Storage
+    // Delete storage files
     if (product?.images && Array.isArray(product.images)) {
-      for (const imageUrl of product.images) {
-        if (isSupabaseStorageUrl(imageUrl)) {
-          const deleteResult = await deleteFileByUrl(imageUrl);
-          if (!deleteResult.success) {
-            console.warn(`⚠️ Failed to delete product image from storage: ${imageUrl}`, deleteResult.error);
-          }
+      for (const url of product.images) {
+        if (isSupabaseStorageUrl(url)) {
+          const r = await deleteFileByUrl(url);
+          if (!r.success) console.warn('Failed to delete image:', url, r.error);
         }
       }
-      console.log('✅ Product images deleted from storage');
+    }
+    if (product?.video_url && isSupabaseStorageUrl(product.video_url)) {
+      await deleteFileByUrl(product.video_url);
     }
 
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', productId);
-
+    const { error } = await supabase.from('products').delete().eq('id', productId);
     if (error) throw error;
 
     return { success: true, error: null };
@@ -125,43 +196,26 @@ export const deleteProduct = async (productId) => {
   }
 };
 
-// Bulk delete products
 export const bulkDeleteProducts = async (productIds) => {
   try {
-    // Fetch products to get images before deleting
     const { data: products } = await supabase
       .from('products')
-      .select('images')
+      .select('images, video_url')
       .in('id', productIds);
 
-    // Collect all image URLs
-    const allImages = [];
+    const allUrls = [];
     if (products) {
-      products.forEach(product => {
-        if (product.images && Array.isArray(product.images)) {
-          allImages.push(...product.images);
-        }
+      products.forEach(p => {
+        if (p.images) allUrls.push(...p.images);
+        if (p.video_url) allUrls.push(p.video_url);
       });
     }
 
-    // Delete images from Supabase Storage
-    for (const imageUrl of allImages) {
-      if (isSupabaseStorageUrl(imageUrl)) {
-        const deleteResult = await deleteFileByUrl(imageUrl);
-        if (!deleteResult.success) {
-          console.warn(`⚠️ Failed to delete product image from storage: ${imageUrl}`, deleteResult.error);
-        }
-      }
-    }
-    if (allImages.length > 0) {
-      console.log(`✅ ${allImages.length} product images deleted from storage`);
+    for (const url of allUrls) {
+      if (isSupabaseStorageUrl(url)) await deleteFileByUrl(url);
     }
 
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .in('id', productIds);
-
+    const { error } = await supabase.from('products').delete().in('id', productIds);
     if (error) throw error;
 
     return { success: true, error: null };
@@ -171,7 +225,8 @@ export const bulkDeleteProducts = async (productIds) => {
   }
 };
 
-// Update product status
+// ─── Status ──────────────────────────────────────────────────────────────────
+
 export const updateProductStatus = async (productId, status) => {
   try {
     const { data, error } = await supabase
@@ -182,7 +237,6 @@ export const updateProductStatus = async (productId, status) => {
       .single();
 
     if (error) throw error;
-
     return { product: data, error: null };
   } catch (error) {
     console.error('Update product status error:', error);
@@ -190,7 +244,6 @@ export const updateProductStatus = async (productId, status) => {
   }
 };
 
-// Update product stock
 export const updateProductStock = async (productId, stock) => {
   try {
     const { data, error } = await supabase
@@ -201,7 +254,6 @@ export const updateProductStock = async (productId, stock) => {
       .single();
 
     if (error) throw error;
-
     return { product: data, error: null };
   } catch (error) {
     console.error('Update product stock error:', error);
@@ -209,10 +261,35 @@ export const updateProductStock = async (productId, stock) => {
   }
 };
 
-// Duplicate product
+// ─── Toggle Flag ─────────────────────────────────────────────────────────────
+
+export const toggleProductFlag = async (productId, flag, value) => {
+  // Validate the flag is a known safe column before sending
+  if (!SAFE_PRODUCT_COLUMNS.has(flag)) {
+    console.error(`[toggleProductFlag] Unknown flag column: "${flag}"`);
+    return { product: null, error: `Unknown flag: ${flag}` };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .update({ [flag]: value })
+      .eq('id', productId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { product: data, error: null };
+  } catch (error) {
+    console.error('Toggle product flag error:', error);
+    return { product: null, error: error.message };
+  }
+};
+
+// ─── Duplicate ───────────────────────────────────────────────────────────────
+
 export const duplicateProduct = async (productId) => {
   try {
-    // Get original product
     const { data: original, error: fetchError } = await supabase
       .from('products')
       .select('*')
@@ -221,16 +298,13 @@ export const duplicateProduct = async (productId) => {
 
     if (fetchError) throw fetchError;
 
-    // Create duplicate with modified name and SKU
-    const duplicate = {
+    const duplicate = sanitizePayload({
       ...original,
-      id: undefined,
       name: `${original.name} (Copy)`,
       sku: original.sku ? `${original.sku}-COPY` : null,
       status: 'DRAFT',
-      created_at: undefined,
-      updated_at: undefined,
-    };
+      sort_order: (original.sort_order || 0) + 1,
+    });
 
     const { data, error } = await supabase
       .from('products')
@@ -239,7 +313,6 @@ export const duplicateProduct = async (productId) => {
       .single();
 
     if (error) throw error;
-
     return { product: data, error: null };
   } catch (error) {
     console.error('Duplicate product error:', error);
@@ -247,33 +320,38 @@ export const duplicateProduct = async (productId) => {
   }
 };
 
-// Get product statistics
+// ─── Reorder ─────────────────────────────────────────────────────────────────
+
+export const updateProductOrder = async (orderedIds) => {
+  try {
+    const updates = orderedIds.map((id, index) =>
+      supabase.from('products').update({ sort_order: index }).eq('id', id)
+    );
+    await Promise.all(updates);
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('Update product order error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ─── Stats ───────────────────────────────────────────────────────────────────
+
 export const getProductStats = async () => {
   try {
-    // Total products
-    const { count: totalCount } = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true });
-
-    // Active products
-    const { count: activeCount } = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'ACTIVE');
-
-    // Low stock products
-    const { count: lowStockCount } = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true })
-      .lte('stock', 10)
-      .eq('status', 'ACTIVE');
-
-    // Out of stock products
-    const { count: outOfStockCount } = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true })
-      .eq('stock', 0)
-      .eq('status', 'ACTIVE');
+    const [
+      { count: totalCount },
+      { count: activeCount },
+      { count: lowStockCount },
+      { count: outOfStockCount },
+      { count: draftCount },
+    ] = await Promise.all([
+      supabase.from('products').select('*', { count: 'exact', head: true }),
+      supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
+      supabase.from('products').select('*', { count: 'exact', head: true }).lte('stock', 10).eq('status', 'ACTIVE'),
+      supabase.from('products').select('*', { count: 'exact', head: true }).eq('stock', 0).eq('status', 'ACTIVE'),
+      supabase.from('products').select('*', { count: 'exact', head: true }).eq('status', 'DRAFT'),
+    ]);
 
     return {
       stats: {
@@ -281,6 +359,7 @@ export const getProductStats = async () => {
         active: activeCount || 0,
         lowStock: lowStockCount || 0,
         outOfStock: outOfStockCount || 0,
+        drafts: draftCount || 0,
       },
       error: null,
     };
@@ -290,53 +369,8 @@ export const getProductStats = async () => {
   }
 };
 
-// Upload product image to Cloudinary
-export const uploadProductImage = async (file) => {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', '44luxury_products');
-    formData.append('folder', '44luxury/products');
+// ─── Utilities ───────────────────────────────────────────────────────────────
 
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
-      {
-        method: 'POST',
-        body: formData,
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error('Image upload failed');
-    }
-
-    const data = await response.json();
-
-    return {
-      url: data.secure_url,
-      publicId: data.public_id,
-      error: null,
-    };
-  } catch (error) {
-    console.error('Upload product image error:', error);
-    return { url: null, publicId: null, error: error.message };
-  }
-};
-
-// Delete image from Cloudinary
-export const deleteProductImage = async (publicId) => {
-  try {
-    // This would typically be done via a backend endpoint
-    // For now, we'll just remove it from the product
-    // Actual deletion from Cloudinary should be done server-side
-    return { success: true, error: null };
-  } catch (error) {
-    console.error('Delete product image error:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// Generate SKU
 export const generateSKU = (productName, category) => {
   const prefix = category === 'men' ? 'M' : category === 'women' ? 'W' : 'U';
   const namePart = productName
@@ -344,32 +378,21 @@ export const generateSKU = (productName, category) => {
     .replace(/[^A-Z0-9]/g, '')
     .substring(0, 4);
   const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
-  
   return `LUX-${prefix}${namePart}-${randomPart}`;
 };
 
-// Validate product data
 export const validateProductData = (productData) => {
   const errors = {};
-
-  if (!productData.name || productData.name.trim() === '') {
-    errors.name = 'Product name is required';
-  }
-
-  if (!productData.price || productData.price <= 0) {
-    errors.price = 'Valid price is required';
-  }
-
-  if (!productData.category) {
-    errors.category = 'Category is required';
-  }
-
-  if (!productData.images || productData.images.length === 0) {
-    errors.images = 'At least one image is required';
-  }
-
-  return {
-    isValid: Object.keys(errors).length === 0,
-    errors,
-  };
+  if (!productData.name || productData.name.trim() === '') errors.name = 'Product name is required';
+  if (!productData.price || productData.price <= 0) errors.price = 'Valid price is required';
+  if (!productData.category) errors.category = 'Category is required';
+  return { isValid: Object.keys(errors).length === 0, errors };
 };
+
+// Legacy alias kept for backwards compatibility
+export const uploadProductImage = async (file) => {
+  console.warn('[productAdminService] uploadProductImage is deprecated. Use storageService.uploadFile directly.');
+  return { url: null, publicId: null, error: 'Use storageService.uploadFile with BUCKETS.PRODUCTS' };
+};
+
+export const deleteProductImage = async () => ({ success: true, error: null });

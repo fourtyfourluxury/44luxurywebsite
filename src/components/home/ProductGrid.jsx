@@ -3,20 +3,34 @@ import { useSiteStore } from '../../store/useSiteStore';
 import ProductCard from '../product/ProductCard';
 
 export default function ProductGrid() {
-  const { products, _hasHydrated } = useSiteStore();
+  const { products, featuredClothes, _hasHydrated } = useSiteStore();
 
   if (!_hasHydrated) return null;
 
-  const displayProducts = [...products]
-    .filter(p => p.status === 'ACTIVE')
-    .slice(0, 12);
+  // Use featured product IDs from homepage config if set, otherwise fallback to newest active products
+  const featuredIds = featuredClothes?.productIds || [];
+
+  let displayProducts;
+  if (featuredIds.length > 0) {
+    // Show featured products in the CMS-defined order
+    const featuredMap = Object.fromEntries(products.map(p => [p.id, p]));
+    displayProducts = featuredIds
+      .map(id => featuredMap[id])
+      .filter(p => p && p.status !== 'DRAFT')
+      .slice(0, 12);
+  } else {
+    // Fallback: active products sorted by sort_order then created_at
+    displayProducts = [...products]
+      .filter(p => p.status === 'ACTIVE')
+      .slice(0, 12);
+  }
 
   if (displayProducts.length === 0) return null;
 
   return (
     <section className="py-20 md:py-28 px-5 md:px-8 lg:px-14 max-w-[1440px] mx-auto">
 
-      {/* ── Section Header (YL style: big title + VIEW ALL right-aligned) ── */}
+      {/* Section Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-10 pb-8 border-b border-[#1c1c18]/10">
         <div>
           <p className="font-grotesk text-[10px] font-bold uppercase tracking-[0.3em] text-[#a8a8a0] mb-2">
@@ -35,7 +49,7 @@ export default function ProductGrid() {
         </Link>
       </div>
 
-      {/* ── 4-column Grid — 3 rows = 12 products (like YL) ── */}
+      {/* 4-column Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 md:gap-x-4 gap-y-10 md:gap-y-14">
         {displayProducts.map(product => (
           <ProductCard key={product.id} product={product} />

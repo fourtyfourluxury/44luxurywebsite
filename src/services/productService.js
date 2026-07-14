@@ -14,7 +14,7 @@ export const getProducts = async (filters = {}) => {
         *,
         collection:collections(id, name, slug)
       `)
-      .eq('status', 'ACTIVE')
+      .neq('status', 'DRAFT')
       .order('created_at', { ascending: false });
 
     // Apply filters
@@ -91,7 +91,7 @@ export const getProductsByCollection = async (collectionSlug) => {
         collection:collections(id, name, slug)
       `)
       .eq('collection_id', collection.id)
-      .eq('status', 'ACTIVE')
+      .neq('status', 'DRAFT')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -112,7 +112,7 @@ export const searchProducts = async (searchQuery) => {
         *,
         collection:collections(id, name, slug)
       `)
-      .eq('status', 'ACTIVE')
+      .neq('status', 'DRAFT')
       .textSearch('search_vector', searchQuery, {
         type: 'websearch',
         config: 'english',
@@ -137,7 +137,7 @@ export const getNewArrivals = async (limit = 8) => {
         *,
         collection:collections(id, name, slug)
       `)
-      .eq('status', 'ACTIVE')
+      .neq('status', 'DRAFT')
       .eq('is_new', true)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -160,7 +160,7 @@ export const getFeaturedProducts = async (limit = 8) => {
         *,
         collection:collections(id, name, slug)
       `)
-      .eq('status', 'ACTIVE')
+      .neq('status', 'DRAFT')
       .eq('is_featured', true)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -183,7 +183,7 @@ export const getRelatedProducts = async (productId, collectionId, limit = 4) => 
         *,
         collection:collections(id, name, slug)
       `)
-      .eq('status', 'ACTIVE')
+      .neq('status', 'DRAFT')
       .eq('collection_id', collectionId)
       .neq('id', productId)
       .limit(limit);
@@ -207,7 +207,7 @@ export const getProductsByIds = async (productIds) => {
         collection:collections(id, name, slug)
       `)
       .in('id', productIds)
-      .eq('status', 'ACTIVE');
+      .neq('status', 'DRAFT');
 
     if (error) throw error;
 
@@ -225,7 +225,7 @@ export const getLowStockProducts = async (threshold = 10) => {
       .from('products')
       .select('*')
       .lte('stock', threshold)
-      .eq('status', 'ACTIVE')
+      .neq('status', 'DRAFT')
       .order('stock', { ascending: true });
 
     if (error) throw error;

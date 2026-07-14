@@ -76,17 +76,64 @@ export default function Navbar({ isTransparent = false }) {
     { label: 'HOME', href: '/' },
     {
       label: 'SHOP', children: [
-        { label: 'All Products', href: '/shop' },
         { label: 'Men', href: '/shop/men' },
         { label: 'Women', href: '/shop/women' },
+        { label: 'Collections', href: '/collections' },
+        { label: 'Accessories', href: collections.some(c => c.slug === 'accessories' && c.status === 'ACTIVE') ? '/collections/accessories' : '/shop?q=accessories' },
+        { label: 'New Arrivals', href: collections.some(c => c.slug === 'new-arrivals' && c.status === 'ACTIVE') ? '/collections/new-arrivals' : '/shop?filter=new' },
+        { label: 'Sale', href: '/shop?filter=sale' },
       ]
     },
     {
-      label: 'COLLECTIONS',
-      children: [
-        { label: 'All Collections', href: '/collections' },
-        ...namedCollections.map(c => ({ label: c.name, href: `/collections/${c.slug}` }))
-      ]
+      label: 'MEN', children: [
+        { label: 'T-Shirts', slug: 't-shirts', fallback: '/shop/men?q=t-shirt' },
+        { label: 'Polos', slug: 'polos', fallback: '/shop/men?q=polo' },
+        { label: 'Hoodies', slug: 'hoodies-sweatshirts', fallback: '/shop/men?q=hoodie' },
+        { label: 'Tracksuits', slug: 'tracksuits', fallback: '/shop/men?q=tracksuit' },
+        { label: 'Denim', slug: 'denim', fallback: '/shop/men?q=denim' },
+        { label: 'Shorts', slug: 'shorts', fallback: '/shop/men?q=shorts' },
+        { label: 'Caps', slug: 'caps', fallback: '/shop/men?q=caps' },
+        { label: 'Socks', slug: 'socks', fallback: '/shop/men?q=socks' },
+      ].map(def => {
+        const found = collections.find(c => c.slug === def.slug && c.status === 'ACTIVE');
+        return {
+          label: found ? found.name : def.label,
+          href: found ? `/collections/${def.slug}` : def.fallback
+        };
+      })
+    },
+    {
+      label: 'WOMEN', children: [
+        { label: 'Crop Tops', slug: 'crop-tops', fallback: '/shop/women?q=crop-top' },
+        { label: 'T-Shirts', slug: 't-shirts', fallback: '/shop/women?q=t-shirt' },
+        { label: 'Tank Tops', slug: 'tank-tops', fallback: '/shop/women?q=tank-top' },
+        { label: 'Tracksuits', slug: 'tracksuits', fallback: '/shop/women?q=tracksuit' },
+        { label: 'Denim', slug: 'denim', fallback: '/shop/women?q=denim' },
+        { label: 'Shorts', slug: 'shorts', fallback: '/shop/women?q=shorts' },
+        { label: 'Caps', slug: 'caps', fallback: '/shop/women?q=caps' },
+      ].map(def => {
+        const found = collections.find(c => c.slug === def.slug && c.status === 'ACTIVE');
+        return {
+          label: found ? found.name : def.label,
+          href: found ? `/collections/${def.slug}` : def.fallback
+        };
+      })
+    },
+    {
+      label: 'COLLECTIONS', children: [
+        { label: 'Summer Collection', slug: 'summer-collection' },
+        { label: 'Essentials', slug: 'essentials' },
+        { label: 'Signature Collection', slug: 'signature-collection' },
+        { label: 'Limited Edition', slug: 'limited-edition' },
+        { label: 'Seasonal Drops', slug: 'seasonal-drops' },
+        { label: 'New Arrivals', slug: 'new-arrivals' }
+      ].map(def => {
+        const found = collections.find(c => c.slug === def.slug && c.status === 'ACTIVE');
+        return {
+          label: found ? found.name : def.label,
+          href: `/collections/${def.slug}`
+        };
+      })
     },
     { label: 'ABOUT', href: '/about' },
     { label: 'FAQ', href: '/faq' },
@@ -121,10 +168,9 @@ export default function Navbar({ isTransparent = false }) {
             aria-label="44 LUXURY Home"
           >
             <img
-              src="/logo-burgundy-main.jpg"
+              src="/logo-white-main.png"
               alt="44 LUXURY"
               className="h-8 md:h-10 w-auto object-contain"
-              style={{ filter: 'url(#remove-white)' }}
             />
           </Link>
 
@@ -185,7 +231,7 @@ export default function Navbar({ isTransparent = false }) {
             {/* Drawer Header */}
             <div className="flex justify-between items-center px-6 py-6 border-b border-[#fcf9f3]/8">
               <Link to="/" onClick={closeDrawer} className="flex items-center hover:opacity-80 transition-opacity">
-                <img src="/logo-burgundy-main.jpg" alt="44 LUXURY" className="h-7 w-auto object-contain" style={{ filter: 'url(#remove-white)' }} />
+                <img src="/logo-white-main.png" alt="44 LUXURY" className="h-7 w-auto object-contain" />
               </Link>
               <button onClick={closeDrawer} className="text-[#a8a8a0] hover:text-[#fcf9f3] transition-colors p-1">
                 <X size={22} />
