@@ -14,7 +14,7 @@ export default function StoreMap() {
       {/* ── Minimalist Header (matching reference image) ───────────────── */}
       <div className="w-full py-6 text-center border-t border-[#fcf9f3]/10">
         <h2 className="font-unica text-3xl md:text-4xl uppercase tracking-widest text-[#fcf9f3]">
-          WALK INTO OUR STORE
+          VISIT OUR STORE
         </h2>
       </div>
 
@@ -38,7 +38,7 @@ export default function StoreMap() {
             scrolling="no"
             marginHeight="0"
             marginWidth="0"
-            src={`https://maps.google.com/maps?width=100%25&height=600&hl=en&q=${encodeURIComponent("Shariff Plaza, Banex, Wuse 2, Abuja, Nigeria")} +(44 Luxury)&t=&z=16&ie=UTF8&iwloc=B&output=embed`}
+            src={`https://maps.google.com/maps?width=100%25&height=600&hl=en&q=9.0573,7.4845+(44%20Luxury%20Store)&t=&z=16&ie=UTF8&iwloc=B&output=embed`}
             allowFullScreen
           />
         </div>
