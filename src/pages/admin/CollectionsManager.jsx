@@ -4,12 +4,6 @@ import { getAllCollections, createCollection, updateCollection, deleteCollection
 import { uploadFile, BUCKETS } from '../../services/storageService';
 import { toast } from '../../components/ui/ToastProvider';
 
-const CATEGORY_TYPES = [
-  'new-arrivals', 't-shirts', 'polos', 'hoodies-sweatshirts',
-  'tracksuits', 'denim', 'crop-tops', 'tank-tops', 'caps', 'socks', 'accessories',
-  'summer-collection', 'essentials', 'signature-collection', 'limited-edition', 'seasonal-drops'
-];
-
 const DEFAULT_COLLECTIONS = [
   { name: 'New Arrivals',          slug: 'new-arrivals',        category: 'unisex', category_type: 'new-arrivals',        sort_order: 1,  seo_title: 'New Arrivals | 44 Luxury', seo_description: 'Shop the latest drops from 44 Luxury — fresh styles, bold pieces.' },
   { name: 'T-Shirts',              slug: 't-shirts',            category: 'unisex', category_type: 't-shirts',            sort_order: 2,  seo_title: 'T-Shirts | 44 Luxury', seo_description: 'Premium graphic and plain tees by 44 Luxury.' },
@@ -32,18 +26,20 @@ const DEFAULT_COLLECTIONS = [
 ];
 
 const EMPTY = {
-  name: '', slug: '', category: 'unisex', category_type: '', description: '',
-  heroImage: '', heroHeadline: '', heroSubheadline: '',
+  name: '', slug: '', description: '',
+  heroImage: '', heroHeadline: '',
   ctaLabel: 'EXPLORE', ctaLink: '/shop', status: 'DRAFT',
-  seo_title: '', seo_description: '', seo_keywords: '',
+  seo_title: '', seo_description: '',
 };
 
 // Convert snake_case DB data → camelCase for UI
+// (spreads every raw DB column first so fields hidden from this simplified
+// form — category, category_type, hero_subheadline, seo_keywords — round-trip
+// unchanged on save instead of being wiped)
 const fromDb = (col) => ({
   ...col,
   heroImage: col.hero_image || '',
   heroHeadline: col.hero_headline || '',
-  heroSubheadline: col.hero_subheadline || '',
   ctaLabel: col.cta_label || 'EXPLORE',
   ctaLink: col.cta_link || '/shop',
 });
@@ -215,7 +211,6 @@ export default function CollectionsManager() {
                     {col.status === 'ACTIVE' ? 'Active' : 'Draft'}
                   </span>
                   <span className="text-[11px] text-white/30">{col.product_count || 0} products</span>
-                  <span className="text-[11px] text-white/20 capitalize">{col.category}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={() => openEdit(col)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/[0.06] transition-all">
@@ -252,27 +247,8 @@ export default function CollectionsManager() {
               <Field label="Collection Name *">
                 <Input value={panel.name} onChange={e => { set('name', e.target.value); if (!panel.id) set('slug', autoSlug(e.target.value)); }} placeholder="e.g. Core Essentials SS25" />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="URL Slug">
-                  <Input value={panel.slug} onChange={e => set('slug', e.target.value)} placeholder="core-essentials-ss25" />
-                </Field>
-                <Field label="Gender">
-                  <select value={panel.category || 'unisex'} onChange={e => set('category', e.target.value)}
-                    className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors">
-                    <option value="men">Men</option>
-                    <option value="women">Women</option>
-                    <option value="unisex">Unisex</option>
-                  </select>
-                </Field>
-              </div>
-              <Field label="Category Type">
-                <select value={panel.category_type || ''} onChange={e => set('category_type', e.target.value)}
-                  className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors">
-                  <option value="">— None / Custom —</option>
-                  {CATEGORY_TYPES.map(t => (
-                    <option key={t} value={t}>{t.replace(/-/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</option>
-                  ))}
-                </select>
+              <Field label="URL Slug">
+                <Input value={panel.slug} onChange={e => set('slug', e.target.value)} placeholder="core-essentials-ss25" />
               </Field>
               <Field label="Description">
                 <textarea value={panel.description || ''} onChange={e => set('description', e.target.value)} rows={3} placeholder="What defines this collection..."
@@ -317,9 +293,6 @@ export default function CollectionsManager() {
               <Field label="Hero Headline">
                 <Input value={panel.heroHeadline || ''} onChange={e => set('heroHeadline', e.target.value)} placeholder="THE EDIT" />
               </Field>
-              <Field label="Hero Subheadline">
-                <Input value={panel.heroSubheadline || ''} onChange={e => set('heroSubheadline', e.target.value)} placeholder="SS25 — Chapter II" />
-              </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="CTA Label">
                   <Input value={panel.ctaLabel || ''} onChange={e => set('ctaLabel', e.target.value)} placeholder="EXPLORE" />
@@ -338,9 +311,6 @@ export default function CollectionsManager() {
                 <Field label="Meta Description">
                   <textarea value={panel.seo_description || ''} onChange={e => set('seo_description', e.target.value)} rows={2} placeholder="Short description for search engines (150–160 chars)..."
                     className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white placeholder-white/20 outline-none resize-none transition-colors" />
-                </Field>
-                <Field label="Keywords (comma-separated)">
-                  <Input value={panel.seo_keywords || ''} onChange={e => set('seo_keywords', e.target.value)} placeholder="44 luxury, t-shirts, african streetwear, abuja" />
                 </Field>
               </div>
             </div>
