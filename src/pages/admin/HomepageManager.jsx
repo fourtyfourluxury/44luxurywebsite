@@ -1062,6 +1062,21 @@ function CategoriesEditorModal({ config, onSave, onClose }) {
       slug: '/shop?q=tank',
       image: 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=700&q=85&auto=format&fit=crop',
     },
+    {
+      label: 'Skirts',
+      slug: '/category/skirts',
+      image: '',
+    },
+    {
+      label: 'Crop Tops',
+      slug: '/category/crop-tops',
+      image: '',
+    },
+    {
+      label: 'Socks',
+      slug: '/category/socks',
+      image: '',
+    },
   ];
 
   const initialCategories = config?.sections?.categories || config?.categories || defaultCategories;
@@ -1069,6 +1084,14 @@ function CategoriesEditorModal({ config, onSave, onClose }) {
   const [editingIndex, setEditingIndex] = useState(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef();
+
+  const handleAddCategory = () => {
+    setCategories(prev => [...prev, { label: 'New Category', slug: '/shop', image: '' }]);
+  };
+
+  const handleDeleteCategory = (index) => {
+    setCategories(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleMove = (index, direction) => {
     const newIndex = index + direction;
@@ -1130,12 +1153,12 @@ function CategoriesEditorModal({ config, onSave, onClose }) {
   };
 
   return (
-    <ModalWrapper title="Edit Curated Categories (4 Tiles)" onClose={onClose}>
+    <ModalWrapper title="Edit Curated Categories" onClose={onClose}>
       <div className="space-y-4 overflow-y-auto pr-1 max-h-[70vh]">
         {editingIndex === null ? (
           <>
             <p className="text-[12px] text-white/55 mb-3 font-grotesk tracking-wide leading-relaxed">
-              Reorder, edit, or upload custom cover campaign photos (4:5 aspect ratio) for each of the 4 homepage category showcase tiles.
+              Add, remove, reorder, edit, or upload custom cover campaign photos (4:5 aspect ratio) for each homepage category showcase tile.
             </p>
             <div className="space-y-3">
               {categories.map((cat, i) => (
@@ -1151,34 +1174,47 @@ function CategoriesEditorModal({ config, onSave, onClose }) {
                     <p className="text-[12px] font-bold text-white truncate">{cat.label || 'Unnamed Category'}</p>
                     <p className="text-[10px] text-white/40 mt-1 truncate">{cat.slug || 'No Link'}</p>
                   </div>
-                  
+
                   {/* Reorder and Edit Actions */}
                   <div className="flex items-center gap-1 shrink-0">
-                    <button 
-                      onClick={() => handleMove(i, -1)} 
+                    <button
+                      onClick={() => handleMove(i, -1)}
                       disabled={i === 0}
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-20"
                     >
                       <ArrowUp size={13} />
                     </button>
-                    <button 
-                      onClick={() => handleMove(i, 1)} 
+                    <button
+                      onClick={() => handleMove(i, 1)}
                       disabled={i === categories.length - 1}
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-20"
                     >
                       <ArrowDown size={13} />
                     </button>
-                    <button 
-                      onClick={() => setEditingIndex(i)} 
+                    <button
+                      onClick={() => setEditingIndex(i)}
                       className="ml-1 px-3 py-1.5 bg-white/5 hover:bg-white/15 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors"
                     >
                       Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(i)}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
               ))}
             </div>
-            
+
+            <button
+              onClick={handleAddCategory}
+              className="w-full py-3 border-2 border-dashed border-white/10 hover:border-white/30 rounded-xl text-[12px] font-semibold text-white/60 hover:text-white transition-colors flex items-center justify-center gap-2"
+            >
+              <Plus size={14} /> Add Category Tile
+            </button>
+
             <div className="flex gap-3 pt-4 border-t border-white/5">
               <button onClick={onClose} className="flex-1 py-3 border border-white/10 rounded-xl text-[12px] font-semibold text-white/60 hover:text-white transition-colors">Cancel</button>
               <button onClick={handleSave} className="flex-1 py-3 bg-white text-black rounded-xl text-[12px] font-bold hover:bg-white/90 transition-colors">Save Category Config</button>

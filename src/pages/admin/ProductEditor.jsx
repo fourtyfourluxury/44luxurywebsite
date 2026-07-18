@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Check, Upload, Trash2, ArrowLeft, ArrowRight, ImageIcon, Video } from 'lucide-react';
+import { X, Check, Upload, Trash2, ArrowLeft, ArrowRight, ImageIcon, Video, Wand2, Loader2 } from 'lucide-react';
 import { createProduct, updateProduct, generateSKU, validateProductData } from '../../services/admin/productAdminService';
-import { uploadFile, BUCKETS } from '../../services/storageService';
+import { uploadFile, deleteFileByUrl, BUCKETS } from '../../services/storageService';
+import { removeImageBackground } from '../../services/backgroundRemoval';
 import { getAllCollections } from '../../services/admin/collectionAdminService';
 import { toast } from '../../components/ui/ToastProvider';
 import { useSiteStore } from '../../store/useSiteStore';
@@ -23,6 +24,7 @@ const PRODUCT_CATEGORIES = [
   'Tracksuits',
   'Denim',
   'Crop Tops',
+  'Skirts',
   'Tank Tops',
   'Caps',
   'Socks',
@@ -63,6 +65,8 @@ export default function ProductEditor({ product, onClose, onSave }) {
   const [errors, setErrors]     = useState({});
   const [customColor, setCustomColor] = useState('');
   const [productId]             = useState(() => product?.id || crypto.randomUUID());
+  const [removingBgIndex, setRemovingBgIndex] = useState(null);
+  const [bgProgress, setBgProgress] = useState(0);
   const fileInputRef = useRef();
 
   const videoInputRef = useRef();
@@ -179,6 +183,42 @@ export default function ProductEditor({ product, onClose, onSave }) {
     const [moved] = updated.splice(fromIdx, 1);
     updated.splice(toIdx, 0, moved);
     set('images', updated);
+  };
+
+  // Strips the background from an already-uploaded image (runs entirely in
+  // the browser — no API key), then re-uploads the result as a transparent
+  // PNG and swaps it into place.
+  const handleRemoveBackground = async (idx) => {
+    const sourceUrl = form.images[idx];
+    setRemovingBgIndex(idx);
+    setBgProgress(0);
+    try {
+      const resultBlob = await removeImageBackground(sourceUrl, setBgProgress);
+      const file = new File([resultBlob], `bg-removed-${Date.now()}.png`, { type: 'image/png' });
+
+      const { url, error } = await uploadFile(file, {
+        bucket: BUCKETS.PRODUCTS,
+        folder: productId,
+        fileName: `${Date.now()}-no-bg.png`,
+      });
+      if (error) throw new Error(error);
+
+      const updated = [...form.images];
+      updated[idx] = url;
+      set('images', updated);
+
+      if (sourceUrl.includes('/storage/v1/object/public/')) {
+        await deleteFileByUrl(sourceUrl);
+      }
+
+      toast('Background removed!', 'success');
+    } catch (err) {
+      console.error('Background removal failed:', err);
+      toast(`Background removal failed: ${err.message}`, 'error');
+    } finally {
+      setRemovingBgIndex(null);
+      setBgProgress(0);
+    }
   };
 
   const handleVideoUpload = async (files) => {
@@ -375,7 +415,7 @@ export default function ProductEditor({ product, onClose, onSave }) {
           {/* STEP 2 — Images */}
           {step === 2 && (
             <div className="max-w-2xl space-y-6">
-              <div><h3 className="text-xl font-bold text-white">Product Images</h3><p className="text-white/30 text-sm mt-1">First image is the cover photo shown on product cards.</p></div>
+              <div><h3 className="text-xl font-bold text-white">Product Images</h3><p className="text-white/30 text-sm mt-1">First image is the cover photo shown on product cards. Hover an uploaded image and click "Remove BG" to strip its background to transparent — takes a few seconds the first time while the tool loads.</p></div>
               {errors.images && <p className="text-red-400 text-sm bg-red-500/10 rounded-xl px-4 py-3">{errors.images}</p>}
               <div
                 onDragOver={e => e.preventDefault()}
@@ -420,7 +460,28 @@ export default function ProductEditor({ product, onClose, onSave }) {
                     <div key={i} className="relative group aspect-square rounded-xl overflow-hidden bg-white/5 border border-white/[0.04] hover:border-white/20 transition-all">
                       <img src={url} alt="" className="w-full h-full object-cover" />
                       {i === 0 && <span className="absolute top-2 left-2 bg-[#c9a96e] text-[#0a0a08] text-[9px] font-bold px-2 py-0.5 rounded-full">COVER</span>}
-                      
+
+                      {/* Remove background */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleRemoveBackground(i); }}
+                        disabled={removingBgIndex !== null}
+                        title="Remove background"
+                        className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/50 transition-colors opacity-0 group-hover:opacity-100 disabled:cursor-not-allowed"
+                      >
+                        {removingBgIndex === i ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <Loader2 size={18} className="text-white animate-spin" />
+                            <span className="text-[9px] text-white font-bold">{Math.round(bgProgress * 100)}%</span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center gap-1">
+                            <Wand2 size={16} className="text-white" />
+                            <span className="text-[9px] text-white font-bold uppercase tracking-wide">Remove BG</span>
+                          </div>
+                        )}
+                      </button>
+
                       {/* Delete button */}
                       <button type="button" onClick={() => removeImage(i)} className="absolute top-2 right-2 w-7 h-7 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md">
                         <Trash2 size={12} className="text-white" />

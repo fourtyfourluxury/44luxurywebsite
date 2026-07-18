@@ -164,6 +164,9 @@ function App() {
               <Route path="/category/caps" element={<CategoryPage category="caps" />} />
               <Route path="/category/polo-shirts" element={<CategoryPage category="polo-shirts" />} />
               <Route path="/category/tank-tops" element={<CategoryPage category="tank-tops" />} />
+              <Route path="/category/skirts" element={<CategoryPage category="skirts" />} />
+              <Route path="/category/crop-tops" element={<CategoryPage category="crop-tops" />} />
+              <Route path="/category/socks" element={<CategoryPage category="socks" />} />
 
               {/* Commerce */}
               <Route path="/cart" element={<Cart />} />

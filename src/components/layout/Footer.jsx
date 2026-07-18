@@ -27,6 +27,9 @@ const footerLinks = {
     { label: 'Caps', href: '/category/caps' },
     { label: 'Polo Shirts', href: '/category/polo-shirts' },
     { label: 'Tank Tops', href: '/category/tank-tops' },
+    { label: 'Skirts', href: '/category/skirts' },
+    { label: 'Crop Tops', href: '/category/crop-tops' },
+    { label: 'Socks', href: '/category/socks' },
   ],
   SUPPORT: [
     { label: 'Contact', href: '/contact' },

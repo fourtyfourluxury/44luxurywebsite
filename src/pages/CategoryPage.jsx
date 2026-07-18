@@ -30,6 +30,24 @@ const CATEGORY_META = {
     keywords: ['tank', 'tank top', 'vest', 'sleeveless'],
     bannerImage: null,
   },
+  skirts: {
+    title: 'SKIRTS',
+    subtitle: 'Tailored silhouettes with an edge.',
+    keywords: ['skirt'],
+    bannerImage: null,
+  },
+  'crop-tops': {
+    title: 'CROP TOPS',
+    subtitle: 'Bold cuts, made for the unapologetic.',
+    keywords: ['crop', 'crop top'],
+    bannerImage: null,
+  },
+  socks: {
+    title: 'SOCKS',
+    subtitle: 'Small detail, big statement.',
+    keywords: ['sock', 'socks'],
+    bannerImage: null,
+  },
 };
 
 // ── Filter bar (same design as Shop) ──────────────────────────────────────────

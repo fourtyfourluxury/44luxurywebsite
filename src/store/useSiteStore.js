@@ -89,6 +89,21 @@ export const useSiteStore = create(
           slug: '/shop?q=tank',
           image: 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=700&q=85&auto=format&fit=crop',
         },
+        {
+          label: 'Skirts',
+          slug: '/category/skirts',
+          image: '',
+        },
+        {
+          label: 'Crop Tops',
+          slug: '/category/crop-tops',
+          image: '',
+        },
+        {
+          label: 'Socks',
+          slug: '/category/socks',
+          image: '',
+        },
       ],
 
       // ─── Orders (will be fetched per user) ──────────────────
