@@ -76,9 +76,18 @@ export default function ProductDetail() {
     navigate('/checkout');
   };
 
-  const related = products
-    .filter(p => p.id !== product.id && p.status !== 'DRAFT' && p.category === product.category)
-    .slice(0, 4);
+  // Recommended products: prioritize same product category (e.g. other
+  // T-Shirts), then same collection, then fill any remaining slots with
+  // other active products so something always shows even in a small catalog.
+  const relatedPool = products.filter(p => p.id !== product.id && p.status !== 'DRAFT');
+  const sameSubcategory = relatedPool.filter(p => product.subcategory && p.subcategory === product.subcategory);
+  const sameCollection = relatedPool.filter(p =>
+    product.collection_id && p.collection_id === product.collection_id &&
+    !sameSubcategory.some(m => m.id === p.id)
+  );
+  const matchedIds = new Set([...sameSubcategory, ...sameCollection].map(p => p.id));
+  const others = relatedPool.filter(p => !matchedIds.has(p.id));
+  const related = [...sameSubcategory, ...sameCollection, ...others].slice(0, 4);
 
   const collectionName = (typeof product.collection === 'string' ? product.collection : product.collection?.name || '')?.replace(/-/g, ' ')?.toUpperCase();
 

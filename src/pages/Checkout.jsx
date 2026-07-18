@@ -328,28 +328,6 @@ export default function Checkout() {
 
                 <div className="border-t border-[#1c1c18]/10" />
 
-                {/* Bank Transfer */}
-                <label className={`flex items-center justify-between px-4 py-4 cursor-pointer transition-colors ${paymentMethod === 'transfer' ? 'bg-[#f6f3ed]' : 'hover:bg-[#faf8f4]'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${paymentMethod === 'transfer' ? 'border-[#1c1c18]' : 'border-[#1c1c18]/30'}`}>
-                      {paymentMethod === 'transfer' && <div className="w-2.5 h-2.5 rounded-full bg-[#1c1c18]" />}
-                    </div>
-                    <span className="font-plex text-sm text-[#1c1c18]">Bank Transfer</span>
-                  </div>
-                  <input type="radio" name="payment" value="transfer" checked={paymentMethod === 'transfer'} onChange={() => setPaymentMethod('transfer')} className="hidden" />
-                </label>
-
-                {paymentMethod === 'transfer' && (
-                  <div className="border-t border-[#1c1c18]/10 px-4 py-4 bg-[#faf8f4]">
-                    <p className="font-plex text-sm text-[#1c1c18]"><strong>Bank:</strong> First Bank of Nigeria</p>
-                    <p className="font-plex text-sm text-[#1c1c18]"><strong>Account Name:</strong> 44LUXURY NIGERIA LTD</p>
-                    <p className="font-plex text-sm text-[#1c1c18]"><strong>Account Number:</strong> 1234567890</p>
-                    <p className="font-plex text-xs text-[#5f5e5e] mt-2">Send proof of payment to orders@44luxury.com with your order ID.</p>
-                  </div>
-                )}
-
-                <div className="border-t border-[#1c1c18]/10" />
-
                 {/* Pay with Crypto */}
                 <label className={`flex items-center justify-between px-4 py-4 cursor-pointer transition-colors ${paymentMethod === 'crypto' ? 'bg-[#f6f3ed]' : 'hover:bg-[#faf8f4]'}`}>
                   <div className="flex items-center gap-3">
