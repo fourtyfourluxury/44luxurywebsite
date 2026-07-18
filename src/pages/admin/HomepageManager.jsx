@@ -22,7 +22,7 @@ export default function HomepageManager() {
   const [slides, setSlides] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { products } = useSiteStore();
+  const { products, collections } = useSiteStore();
 
   const [activeEditor, setActiveEditor] = useState(null);
 
@@ -357,6 +357,7 @@ export default function HomepageManager() {
         <HomepageSectionsModal
           sections={sections}
           products={products}
+          collections={collections}
           reload={load}
           onClose={() => setActiveEditor(null)}
         />
@@ -665,7 +666,7 @@ function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onCl
 // Admin CRUD for named, CMS-managed homepage product sections (title + up to
 // 8 products each). List view lets you create/rename/reorder/hide/delete
 // sections; clicking "Edit Products" opens the product picker for that section.
-function HomepageSectionsModal({ sections: initialSections, products, reload, onClose }) {
+function HomepageSectionsModal({ sections: initialSections, products, collections, reload, onClose }) {
   const [sections, setSections] = useState(initialSections || []);
   const [editingId, setEditingId] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -710,6 +711,12 @@ function HomepageSectionsModal({ sections: initialSections, products, reload, on
     const { error } = await updateHomepageSection(sec.id, { visible: sec.visible === false });
     if (error) toast(error, 'error');
     else await refresh();
+  };
+
+  const handleSetCollection = async (sec, collectionId) => {
+    const { error } = await updateHomepageSection(sec.id, { collection_id: collectionId || null });
+    if (error) toast(error, 'error');
+    else { toast('Linked collection updated', 'success'); await refresh(); }
   };
 
   const handleDelete = async (id) => {
@@ -758,6 +765,8 @@ function HomepageSectionsModal({ sections: initialSections, products, reload, on
       <p className="text-[12px] text-white/55 mb-4 leading-relaxed">
         Create as many named sections as you like. Each holds up to 8 products in a 4×2 grid.
         Rename, reorder, hide, or delete a section at any time — changes appear on the live site instantly.
+        Link a section to a Collection so its "VIEW ALL" button shows every product in that collection,
+        not just the 8 on the homepage tile. Create the collection first in Collections Manager if it doesn't exist yet.
       </p>
 
       <div className="space-y-3">
@@ -809,6 +818,19 @@ function HomepageSectionsModal({ sections: initialSections, products, reload, on
                   </div>
                 )}
                 <p className="text-[10px] text-white/40 mt-0.5">{(sec.product_ids || []).length}/8 products {sec.visible === false && '· Hidden'}</p>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="text-[9px] text-white/30 uppercase tracking-wider shrink-0">View All →</span>
+                  <select
+                    value={sec.collection_id || ''}
+                    onChange={e => handleSetCollection(sec, e.target.value)}
+                    className="flex-1 min-w-0 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white/80 outline-none"
+                  >
+                    <option value="">/shop (all products)</option>
+                    {(collections || []).map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">

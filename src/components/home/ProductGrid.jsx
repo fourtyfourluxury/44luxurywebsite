@@ -7,7 +7,7 @@ import ProductCard from '../product/ProductCard';
  * `section` comes from the `homepage_sections` table: { title, product_ids }.
  */
 export default function ProductGrid({ section }) {
-  const { products, _hasHydrated } = useSiteStore();
+  const { products, collections, _hasHydrated } = useSiteStore();
 
   if (!_hasHydrated || !section) return null;
 
@@ -19,6 +19,11 @@ export default function ProductGrid({ section }) {
 
   if (displayProducts.length === 0) return null;
 
+  const linkedCollection = section.collection_id
+    ? collections.find(c => c.id === section.collection_id)
+    : null;
+  const viewAllLink = linkedCollection ? `/collections/${linkedCollection.slug}` : '/shop';
+
   return (
     <section className="py-20 md:py-28 px-5 md:px-8 lg:px-14 max-w-[1440px] mx-auto">
 
@@ -28,7 +33,7 @@ export default function ProductGrid({ section }) {
           {section.title}
         </h2>
         <Link
-          to="/shop"
+          to={viewAllLink}
           className="inline-flex items-center gap-3 border-2 border-[#1c1c18] text-[#1c1c18] font-grotesk font-bold uppercase tracking-widest text-[10px] px-7 py-3 hover:bg-[#1c1c18] hover:text-[#fcf9f3] transition-all duration-300 group shrink-0"
         >
           VIEW ALL

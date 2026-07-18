@@ -55,6 +55,7 @@ export async function updateSection(id, updates) {
     if (updates.title !== undefined) dbUpdates.title = updates.title;
     if (updates.product_ids !== undefined) dbUpdates.product_ids = updates.product_ids;
     if (updates.visible !== undefined) dbUpdates.visible = updates.visible;
+    if (updates.collection_id !== undefined) dbUpdates.collection_id = updates.collection_id;
 
     const { data, error } = await supabase
       .from('homepage_sections')
