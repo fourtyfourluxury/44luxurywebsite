@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import * as productService from '../services/productService';
 import * as collectionService from '../services/collectionService';
 import * as homepageService from '../services/homepageService';
-import { subscribeToHomepageConfig, subscribeToHeroSlides, subscribeToProducts, subscribeToCollections } from '../services/realtimeService';
+import { subscribeToHomepageConfig, subscribeToHeroSlides, subscribeToProducts, subscribeToCollections, subscribeToHomepageSections } from '../services/realtimeService';
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
@@ -36,6 +36,7 @@ export const useSiteStore = create(
       featuredClothes: {
         productIds: [], // max 5
       },
+      homepageSections: [], // admin-managed named product sections (title + product_ids)
       splitContent: {
         collections: {
           image: '',
@@ -158,11 +159,18 @@ export const useSiteStore = create(
             console.warn('Error fetching hero slides:', slidesError);
           }
 
+          // Fetch admin-managed homepage product sections
+          const { sections: homepageSections, error: sectionsError } = await homepageService.getHomepageProductSections();
+          if (sectionsError) {
+            console.warn('Error fetching homepage sections:', sectionsError);
+          }
+
           // Update store with fetched data
           set({
             products: products || [],
             collections: collections || [],
             heroSlides: heroSlides || [],
+            homepageSections: homepageSections || [],
             // Update homepage sections from config
             announcement: homepageConfig?.announcement || state.announcement,
             heroDisplayMode: homepageConfig?.hero_display_mode || state.heroDisplayMode,
@@ -211,11 +219,15 @@ export const useSiteStore = create(
           
           // Fetch hero slides
           const { slides: heroSlides } = await homepageService.getHeroSlides();
-          
+
+          // Fetch admin-managed homepage product sections
+          const { sections: homepageSections } = await homepageService.getHomepageProductSections();
+
           if (homepageConfig) {
             const current = get();
             set({
               heroSlides: heroSlides || [],
+              homepageSections: homepageSections || [],
               announcement: homepageConfig.announcement || current.announcement,
               heroDisplayMode: homepageConfig.hero_display_mode || current.heroDisplayMode,
               heroSpeed: homepageConfig.hero_speed || current.heroSpeed,
@@ -280,6 +292,13 @@ export const useSiteStore = create(
           get().refreshCollections();
         });
 
+        // Subscribe to homepage sections changes
+        const sectionsChannel = subscribeToHomepageSections(async () => {
+          console.log('🔄 Realtime: Homepage sections changed, refetching...');
+          const { sections } = await homepageService.getHomepageProductSections();
+          set({ homepageSections: sections || [] });
+        });
+
         // Return cleanup function
         return () => {
           console.log('🔌 Unsubscribing from realtime updates');
@@ -287,6 +306,7 @@ export const useSiteStore = create(
           slidesChannel.unsubscribe();
           if (productsChannel) productsChannel.unsubscribe();
           if (collectionsChannel) collectionsChannel.unsubscribe();
+          if (sectionsChannel) sectionsChannel.unsubscribe();
         };
       },
 

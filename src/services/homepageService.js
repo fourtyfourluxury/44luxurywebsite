@@ -134,6 +134,24 @@ export const getFeaturedProductIds = async () => {
   }
 };
 
+// Get visible, admin-managed product sections for the homepage
+export const getHomepageProductSections = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('homepage_sections')
+      .select('*')
+      .eq('visible', true)
+      .order('sort_order', { ascending: true });
+
+    if (error) throw error;
+
+    return { sections: data || [], error: null };
+  } catch (error) {
+    console.error('Get homepage product sections error:', error);
+    return { sections: [], error: error.message };
+  }
+};
+
 // Get homepage sections configuration
 export const getHomepageSections = async () => {
   try {

@@ -447,6 +447,37 @@ export function subscribeToCollections(callback) {
 }
 
 /**
+ * Subscribe to homepage product sections updates
+ * @param {Function} callback - Callback function for updates
+ * @returns {Object} Subscription object
+ */
+export function subscribeToHomepageSections(callback) {
+  const subscription = supabase
+    .channel('homepage-sections-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'homepage_sections'
+      },
+      (payload) => {
+        console.log('🔄 Realtime: Homepage sections changed', payload);
+        callback({
+          event: payload.eventType,
+          section: payload.new || payload.old,
+          timestamp: new Date()
+        });
+      }
+    )
+    .subscribe((status) => {
+      console.log('📡 Homepage sections subscription status:', status);
+    });
+
+  return subscription;
+}
+
+/**
  * Create a presence channel for real-time user presence
  * @param {string} channelName - Channel name
  * @param {Object} userInfo - User information

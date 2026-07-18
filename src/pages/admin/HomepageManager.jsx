@@ -4,6 +4,13 @@ import {
   Settings, Type, Loader2, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { getHomepageConfig, updateHomepageConfig, getHeroSlides, createHeroSlide, updateHeroSlide, deleteHeroSlide } from '../../services/admin/homepageAdminService';
+import {
+  getSections as getHomepageSectionsAdmin,
+  createSection as createHomepageSection,
+  updateSection as updateHomepageSection,
+  deleteSection as deleteHomepageSection,
+  reorderSections as reorderHomepageSections,
+} from '../../services/admin/homepageSectionsAdminService';
 import { uploadFile, compressImage, deleteFileByUrl, BUCKETS } from '../../services/storageService';
 import { toast } from '../../components/ui/ToastProvider';
 import { useSiteStore } from '../../store/useSiteStore';
@@ -13,8 +20,9 @@ const isVideo = (name = '') => /\.(mp4|webm|mov)$/i.test(name) || name.includes(
 export default function HomepageManager() {
   const [config, setConfig] = useState(null);
   const [slides, setSlides] = useState([]);
+  const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { products } = useSiteStore(); 
+  const { products } = useSiteStore();
 
   const [activeEditor, setActiveEditor] = useState(null);
 
@@ -22,12 +30,14 @@ export default function HomepageManager() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: cfg }, { data: sl }] = await Promise.all([
+    const [{ data: cfg }, { data: sl }, { data: sec }] = await Promise.all([
       getHomepageConfig(),
       getHeroSlides(),
+      getHomepageSectionsAdmin(),
     ]);
     setConfig(cfg || {});
     setSlides(sl || []);
+    setSections(sec || []);
     setLoading(false);
   };
 
@@ -73,11 +83,6 @@ export default function HomepageManager() {
     </div>
   );
 
-  // Helper to get featured products for preview
-  const featuredProducts = (config?.featured_product_ids || [])
-    .map(id => products.find(p => p.id === id))
-    .filter(Boolean);
-
   return (
     <div className="p-8 max-w-[1200px] mx-auto">
       <div className="flex items-start justify-between mb-8">
@@ -119,44 +124,53 @@ export default function HomepageManager() {
           </div>
         </div>
 
-        {/* ── Section 2: PRODUCT GRID — 4×3 NEW ARRIVALS ── */}
-        <div 
-          onClick={() => setActiveEditor('featured')}
+        {/* ── Section 2: HOMEPAGE PRODUCT SECTIONS (dynamic, named, 4×2) ── */}
+        <div
+          onClick={() => setActiveEditor('sections')}
           className="relative w-full py-12 bg-[#0f0f0c] cursor-pointer group flex flex-col items-center justify-center border-b border-white/10"
         >
           <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.02] transition-colors" />
           {/* Header */}
-          <div className="w-full px-8 mb-6 flex items-end justify-between">
-            <div>
-              <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold mb-1">SUMMER SALES</p>
-              <h2 className="font-unica text-3xl uppercase tracking-tighter text-white/70">NEW ARRIVALS</h2>
-            </div>
-            <span className="text-[9px] text-white/30 font-bold uppercase tracking-widest border border-white/20 px-4 py-2">VIEW ALL →</span>
+          <div className="w-full px-8 mb-6 flex items-center justify-between">
+            <span className="text-[9px] bg-black/60 text-white/60 font-bold uppercase tracking-widest px-3 py-1.5">
+              2. PRODUCT SECTIONS ({sections.length} section{sections.length === 1 ? '' : 's'})
+            </span>
           </div>
-          {/* 4-col grid preview */}
-          <div className="grid grid-cols-4 gap-3 px-8 w-full opacity-60 group-hover:opacity-30 transition-opacity">
-            {featuredProducts.length > 0 ? (
-              featuredProducts.slice(0, 12).map(p => (
-                <div key={p.id} className="aspect-[4/5] bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center relative">
-                  {p.images?.[0] ? (
-                    <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <ImageIcon size={16} className="text-white/10" />
-                  )}
-                </div>
-              ))
+          {/* Stacked section previews */}
+          <div className="w-full px-8 space-y-6 opacity-60 group-hover:opacity-30 transition-opacity">
+            {sections.length > 0 ? (
+              sections.map(sec => {
+                const secProducts = (sec.product_ids || []).map(id => products.find(p => p.id === id)).filter(Boolean);
+                return (
+                  <div key={sec.id}>
+                    <p className="text-[11px] font-bold text-white/70 uppercase tracking-widest mb-2">
+                      {sec.title} {sec.visible === false && <span className="text-white/30">(hidden)</span>}
+                    </p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {Array.from({ length: 4 }).map((_, i) => {
+                        const p = secProducts[i];
+                        return (
+                          <div key={i} className="aspect-[4/5] bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center relative">
+                            {p?.images?.[0] ? (
+                              <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <ImageIcon size={14} className="text-white/10" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
             ) : (
-              Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="aspect-[4/5] bg-white/5 border border-white/10 flex items-center justify-center">
-                  <ImageIcon size={14} className="text-white/10" />
-                </div>
-              ))
+              <p className="text-[11px] text-white/30 text-center py-6">No product sections yet. Click to create one.</p>
             )}
           </div>
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity translate-y-4 group-hover:translate-y-0 duration-300 pointer-events-none">
-            <p className="text-[10px] text-white/40 mb-3 uppercase tracking-widest">4 columns × 3 rows = 12 products</p>
+            <p className="text-[10px] text-white/40 mb-3 uppercase tracking-widest">Named sections · 4 columns × 2 rows = 8 products each</p>
             <button className="bg-white text-black px-6 py-2.5 font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl pointer-events-auto">
-              <Edit2 size={14} /> Edit Featured Products ({config?.featured_product_ids?.length || 0}/12)
+              <Edit2 size={14} /> Manage Product Sections
             </button>
           </div>
         </div>
@@ -339,12 +353,12 @@ export default function HomepageManager() {
           onClose={() => setActiveEditor(null)} 
         />
       )}
-      {activeEditor === 'featured' && (
-        <FeaturedClothesModal 
-          config={config?.featured_product_ids || []} 
+      {activeEditor === 'sections' && (
+        <HomepageSectionsModal
+          sections={sections}
           products={products}
-          onSave={(data) => saveConfig('featured_product_ids', data)} 
-          onClose={() => setActiveEditor(null)} 
+          reload={load}
+          onClose={() => setActiveEditor(null)}
         />
       )}
       {activeEditor === 'categories' && (
@@ -647,15 +661,223 @@ function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onCl
   );
 }
 
-function FeaturedClothesModal({ config, products, onSave, onClose }) {
-  const [selectedIds, setSelectedIds] = useState(config || []);
+// ── Homepage Product Sections Modal ────────────────────────────────────────
+// Admin CRUD for named, CMS-managed homepage product sections (title + up to
+// 8 products each). List view lets you create/rename/reorder/hide/delete
+// sections; clicking "Edit Products" opens the product picker for that section.
+function HomepageSectionsModal({ sections: initialSections, products, reload, onClose }) {
+  const [sections, setSections] = useState(initialSections || []);
+  const [editingId, setEditingId] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameDraft, setRenameDraft] = useState('');
+
+  const refresh = async () => {
+    const { data } = await getHomepageSectionsAdmin();
+    setSections(data || []);
+    reload?.();
+  };
+
+  const handleCreate = async () => {
+    if (!newTitle.trim()) {
+      toast('Enter a section name', 'error');
+      return;
+    }
+    const { error } = await createHomepageSection(newTitle.trim());
+    if (error) {
+      toast(error, 'error');
+      return;
+    }
+    toast('Section created!', 'success');
+    setNewTitle('');
+    setCreating(false);
+    await refresh();
+  };
+
+  const handleSaveRename = async (id) => {
+    if (!renameDraft.trim()) {
+      toast('Section name cannot be empty', 'error');
+      return;
+    }
+    const { error } = await updateHomepageSection(id, { title: renameDraft.trim() });
+    if (error) toast(error, 'error');
+    else { toast('Section renamed', 'success'); await refresh(); }
+    setRenamingId(null);
+  };
+
+  const handleToggleVisible = async (sec) => {
+    const { error } = await updateHomepageSection(sec.id, { visible: sec.visible === false });
+    if (error) toast(error, 'error');
+    else await refresh();
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this section? This cannot be undone.')) return;
+    const { error } = await deleteHomepageSection(id);
+    if (error) toast(error, 'error');
+    else { toast('Section deleted', 'success'); await refresh(); }
+  };
+
+  const handleMove = async (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= sections.length) return;
+    const updated = [...sections];
+    const temp = updated[index];
+    updated[index] = updated[newIndex];
+    updated[newIndex] = temp;
+    setSections(updated);
+    await reorderHomepageSections(updated.map(s => s.id));
+  };
+
+  const handleSaveProducts = async (id, productIds) => {
+    const { error } = await updateHomepageSection(id, { product_ids: productIds });
+    if (error) {
+      toast(error, 'error');
+      return;
+    }
+    toast('Products updated', 'success');
+    setEditingId(null);
+    await refresh();
+  };
+
+  if (editingId) {
+    const sec = sections.find(s => s.id === editingId);
+    return (
+      <SectionProductPickerModal
+        section={sec}
+        products={products}
+        onSave={(ids) => handleSaveProducts(editingId, ids)}
+        onClose={() => setEditingId(null)}
+      />
+    );
+  }
+
+  return (
+    <ModalWrapper title="Manage Homepage Product Sections" onClose={onClose}>
+      <p className="text-[12px] text-white/55 mb-4 leading-relaxed">
+        Create as many named sections as you like. Each holds up to 8 products in a 4×2 grid.
+        Rename, reorder, hide, or delete a section at any time — changes appear on the live site instantly.
+      </p>
+
+      <div className="space-y-3">
+        {sections.length === 0 && (
+          <p className="text-white/30 text-sm py-4 text-center">No sections yet. Create your first one below.</p>
+        )}
+        {sections.map((sec, i) => (
+          <div key={sec.id} className="bg-[#141410] border border-white/10 rounded-xl p-3">
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-1 shrink-0">
+                <button
+                  onClick={() => handleMove(i, -1)}
+                  disabled={i === 0}
+                  className="w-6 h-6 rounded flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-20"
+                >
+                  <ArrowUp size={12} />
+                </button>
+                <button
+                  onClick={() => handleMove(i, 1)}
+                  disabled={i === sections.length - 1}
+                  className="w-6 h-6 rounded flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-20"
+                >
+                  <ArrowDown size={12} />
+                </button>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                {renamingId === sec.id ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={renameDraft}
+                      onChange={e => setRenameDraft(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleSaveRename(sec.id)}
+                      className="flex-1 bg-black/40 border border-white/20 rounded-lg px-2.5 py-1.5 text-[12px] text-white outline-none"
+                    />
+                    <button onClick={() => handleSaveRename(sec.id)} className="text-[10px] font-bold text-[#c9a96e] uppercase px-2">Save</button>
+                    <button onClick={() => setRenamingId(null)} className="text-[10px] font-bold text-white/40 uppercase px-2">Cancel</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="text-[13px] font-bold text-white truncate">{sec.title}</p>
+                    <button
+                      onClick={() => { setRenamingId(sec.id); setRenameDraft(sec.title); }}
+                      className="text-white/30 hover:text-white transition-colors shrink-0"
+                    >
+                      <Edit2 size={11} />
+                    </button>
+                  </div>
+                )}
+                <p className="text-[10px] text-white/40 mt-0.5">{(sec.product_ids || []).length}/8 products {sec.visible === false && '· Hidden'}</p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => handleToggleVisible(sec)}
+                  className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${sec.visible !== false ? 'bg-[#c9a96e]' : 'bg-white/10'}`}
+                  title={sec.visible !== false ? 'Visible on homepage' : 'Hidden from homepage'}
+                >
+                  <div className={`w-4 h-4 rounded-full bg-black transition-transform duration-200 ${sec.visible !== false ? 'translate-x-4' : 'translate-x-0'}`} />
+                </button>
+                <button
+                  onClick={() => setEditingId(sec.id)}
+                  className="px-3 py-1.5 bg-white/5 hover:bg-white/15 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors"
+                >
+                  Edit Products
+                </button>
+                <button
+                  onClick={() => handleDelete(sec.id)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 pt-4 border-t border-white/5">
+        {creating ? (
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleCreate()}
+              placeholder="e.g. NEW ARRIVALS"
+              className="flex-1 bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-2.5 text-[12px] text-white outline-none transition-colors"
+            />
+            <button onClick={handleCreate} className="px-4 py-2.5 bg-white text-black text-[11px] font-bold uppercase rounded-xl">Create</button>
+            <button onClick={() => { setCreating(false); setNewTitle(''); }} className="px-3 py-2.5 text-white/40 hover:text-white text-[11px] font-bold uppercase">Cancel</button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setCreating(true)}
+            className="w-full py-3 border-2 border-dashed border-white/10 hover:border-white/30 rounded-xl text-[12px] font-semibold text-white/60 hover:text-white transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus size={14} /> New Section
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-3 pt-5">
+        <button onClick={onClose} className="flex-1 py-3 border border-white/10 rounded-xl text-[12px] font-semibold text-white/60 hover:text-white transition-colors">Done</button>
+      </div>
+    </ModalWrapper>
+  );
+}
+
+// ── Product Picker for a single homepage section (max 8) ──────────────────
+function SectionProductPickerModal({ section, products, onSave, onClose }) {
+  const [selectedIds, setSelectedIds] = useState(section?.product_ids || []);
 
   const toggleProduct = (id) => {
     if (selectedIds.includes(id)) {
       setSelectedIds(selectedIds.filter(x => x !== id));
     } else {
-      if (selectedIds.length >= 12) {
-        toast('Maximum 12 products allowed', 'error');
+      if (selectedIds.length >= 8) {
+        toast('Maximum 8 products per section', 'error');
         return;
       }
       setSelectedIds([...selectedIds, id]);
@@ -667,9 +889,9 @@ function FeaturedClothesModal({ config, products, onSave, onClose }) {
   };
 
   return (
-    <ModalWrapper title="Edit Featured Products — New Arrivals Grid" onClose={onClose}>
-      <p className="text-[12px] text-white/60 mb-6">Select up to 12 products that appear in the homepage 4×3 grid. They display in the order you select them.</p>
-      
+    <ModalWrapper title={`Edit Products — "${section?.title || ''}"`} onClose={onClose}>
+      <p className="text-[12px] text-white/60 mb-6">Select up to 8 products for this section's 4×2 grid. They display in the order you select them.</p>
+
       <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
         {products.filter(p => p.status === 'ACTIVE').map(product => {
           const isSelected = selectedIds.includes(product.id);
@@ -699,7 +921,7 @@ function FeaturedClothesModal({ config, products, onSave, onClose }) {
 
       <div className="flex gap-3 mt-6">
         <button onClick={onClose} className="flex-1 py-3 border border-white/10 text-[12px] font-semibold text-white/60 hover:text-white transition-colors">Cancel</button>
-        <button onClick={handleSave} className="flex-1 py-3 bg-white text-black text-[12px] font-bold hover:bg-white/90 transition-colors">Save Selection ({selectedIds.length}/12)</button>
+        <button onClick={handleSave} className="flex-1 py-3 bg-white text-black text-[12px] font-bold hover:bg-white/90 transition-colors">Save Selection ({selectedIds.length}/8)</button>
       </div>
     </ModalWrapper>
   );
