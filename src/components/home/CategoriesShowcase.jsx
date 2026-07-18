@@ -67,9 +67,9 @@ export default function CategoriesShowcase() {
             <button
               onClick={() => scrollByAmount(-1)}
               aria-label="Show previous categories"
-              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-11 h-11 items-center justify-center bg-[#fcf9f3] border border-[#1c1c18]/15 shadow-lg hover:bg-[#1c1c18] hover:text-[#fcf9f3] text-[#1c1c18] transition-colors"
+              className="force-circle hidden md:flex absolute left-3 md:left-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full items-center justify-center bg-white/90 backdrop-blur-sm shadow-lg hover:bg-white text-[#1c1c18] transition-colors"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={20} strokeWidth={2} />
             </button>
           )}
 
@@ -120,9 +120,9 @@ export default function CategoriesShowcase() {
             <button
               onClick={() => scrollByAmount(1)}
               aria-label="Show more categories"
-              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-11 h-11 items-center justify-center bg-[#fcf9f3] border border-[#1c1c18]/15 shadow-lg hover:bg-[#1c1c18] hover:text-[#fcf9f3] text-[#1c1c18] transition-colors"
+              className="force-circle hidden md:flex absolute right-3 md:right-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full items-center justify-center bg-white/90 backdrop-blur-sm shadow-lg hover:bg-white text-[#1c1c18] transition-colors"
             >
-              <ChevronRight size={18} />
+              <ChevronRight size={20} strokeWidth={2} />
             </button>
           )}
         </div>

@@ -9,6 +9,12 @@
   border-radius: 0 !important;
 }
 
+/* ── Explicit circle exception (carousel arrow buttons, etc.) ──────────
+   Higher specificity than the universal reset above, so this wins. ──── */
+.force-circle {
+  border-radius: 9999px !important;
+}
+
 html, body {
   background-color: #fcf9f3;
   color: #1c1c18;
