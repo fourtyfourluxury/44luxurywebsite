@@ -13,4 +13,11 @@ export default defineConfig({
   worker: {
     format: 'es',
   },
+  // Not enabling Cross-Origin-Embedder-Policy/COOP here: it would make
+  // @imgly/background-removal's WASM multi-threaded (faster), but
+  // require-corp blocks any cross-origin resource that doesn't opt in —
+  // which would break the Google Maps embed and the Unsplash category
+  // images. Single-threaded WASM is slower but doesn't risk breaking
+  // those. The image is downscaled before processing instead, which is
+  // the bigger factor in how long it takes.
 })

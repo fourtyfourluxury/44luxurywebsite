@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Check, Upload, Trash2, ArrowLeft, ArrowRight, ImageIcon, Video, Wand2, Loader2 } from 'lucide-react';
 import { createProduct, updateProduct, generateSKU, validateProductData } from '../../services/admin/productAdminService';
-import { uploadFile, deleteFileByUrl, BUCKETS } from '../../services/storageService';
+import { uploadFile, deleteFileByUrl, compressImage, BUCKETS } from '../../services/storageService';
 import { removeImageBackground } from '../../services/backgroundRemoval';
 import { getAllCollections } from '../../services/admin/collectionAdminService';
 import { toast } from '../../components/ui/ToastProvider';
@@ -191,7 +191,16 @@ export default function ProductEditor({ product, onClose, onSave }) {
     setRemovingBgIndex(idx);
     setBgProgress(0);
     try {
-      const resultBlob = await removeImageBackground(sourceUrl, setBgProgress);
+      // Downscale before segmenting — source photos straight off a camera/
+      // phone can be 40MP+, which makes in-browser background removal
+      // extremely slow (or appear to hang) and memory-heavy. 1600px wide
+      // is plenty for how these images are displayed on the site.
+      const sourceResponse = await fetch(sourceUrl);
+      const sourceBlob = await sourceResponse.blob();
+      const sourceFile = new File([sourceBlob], 'source.jpg', { type: sourceBlob.type || 'image/jpeg' });
+      const resized = await compressImage(sourceFile, 1600, 0.9);
+
+      const resultBlob = await removeImageBackground(resized, setBgProgress);
       const file = new File([resultBlob], `bg-removed-${Date.now()}.png`, { type: 'image/png' });
 
       const { url, error } = await uploadFile(file, {
