@@ -38,7 +38,7 @@ export default function StoreMap() {
             scrolling="no"
             marginHeight="0"
             marginWidth="0"
-            src={`https://maps.google.com/maps?q=${encodeURIComponent("Shariff Plaza, Banex, Wuse 2, Abuja, Nigeria")}&t=m&z=16&output=embed&iwloc=near`}
+            src={`https://maps.google.com/maps?width=100%25&height=600&hl=en&q=${encodeURIComponent("Shariff Plaza, Banex, Wuse 2, Abuja, Nigeria")} +(44 Luxury)&t=&z=16&ie=UTF8&iwloc=B&output=embed`}
             allowFullScreen
           />
         </div>
