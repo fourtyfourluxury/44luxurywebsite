@@ -204,7 +204,7 @@ export default function Shop() {
           <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#fcf9f3]/40 mb-3">
             SHOP
           </p>
-          <h1 className="font-unica text-7xl md:text-[9rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3]">
+          <h1 className="font-unica text-5xl sm:text-7xl md:text-[9rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3] break-words">
             {pageTitle}
           </h1>
         </div>

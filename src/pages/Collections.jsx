@@ -90,7 +90,7 @@ export default function Collections() {
           <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#fcf9f3]/50 mb-4">
             {categoryLabel} · {displayProducts.length} PIECES
           </p>
-          <h1 className="font-unica text-7xl md:text-[9rem] lg:text-[11rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3] mb-6">
+          <h1 className="font-unica text-4xl sm:text-6xl md:text-[9rem] lg:text-[11rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3] mb-6 break-words">
             {collection.hero_headline || collection.name}
           </h1>
           {(collection.hero_subheadline || collection.description) && (

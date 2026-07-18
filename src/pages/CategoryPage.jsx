@@ -210,7 +210,7 @@ export default function CategoryPage({ category }) {
           <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#fcf9f3]/40 mb-3">
             SHOP / {meta.title}
           </p>
-          <h1 className="font-unica text-7xl md:text-[9rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3]">
+          <h1 className="font-unica text-4xl sm:text-6xl md:text-[9rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3] break-words">
             {meta.title}
           </h1>
           {meta.subtitle && (

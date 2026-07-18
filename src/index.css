@@ -14,6 +14,10 @@ html, body {
   color: #1c1c18;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Safety net: nothing on the page (marquees, hero text, decorative
+     elements) should ever be able to force a horizontal scrollbar. */
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 /* ── Typography helpers ─────────────────────────────── */

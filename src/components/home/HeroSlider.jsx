@@ -106,7 +106,7 @@ export default function CampaignCarousel() {
       <div
         className="relative w-full overflow-hidden"
         style={{
-          height: 'calc(100vw / 0.8)',
+          height: 'clamp(420px, calc(100vw / 0.8), 92vh)',
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
