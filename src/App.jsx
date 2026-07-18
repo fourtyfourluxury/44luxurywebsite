@@ -4,6 +4,7 @@ import Layout from './components/layout/Layout';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminRoute from './components/admin/AdminRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import ScrollToTop from './components/common/ScrollToTop';
 import { useSiteStore } from './store/useSiteStore';
 import { useAuthStore } from './store/authStore';
 
@@ -110,6 +111,7 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
+        <ScrollToTop />
         <Routes>
           {/* ── Admin Login — unprotected ───── */}
           <Route path="/admin/login" element={<AdminLogin />} />

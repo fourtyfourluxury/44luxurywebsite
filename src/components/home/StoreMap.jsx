@@ -5,16 +5,17 @@ export default function StoreMap() {
 
   // CMS values with fallbacks
   const visible = contactMap?.visible !== false;
-  const lat = contactMap?.lat ?? 9.0573;
-  const lng = contactMap?.lng ?? 7.4845;
+  const address = contactMap?.address || 'Shop C426, Shariff Plaza, Banex, Wuse 2, Abuja, FCT, Nigeria';
 
   if (!visible) return null;
 
-  // Query by exact coordinates (not a text address search) so the pin always
-  // drops precisely on the store — a text query depends on Google's fuzzy
-  // geocoding and can drift to a nearby building or the wrong plaza.
-  const pinLabel = '44+Luxury+Store';
-  const mapSrc = `https://maps.google.com/maps?q=${lat},${lng}(${pinLabel})&z=17&ie=UTF8&iwloc=B&output=embed`;
+  // Query by the plaza's real, indexed name/address rather than raw
+  // coordinates with a made-up label — a synthetic coordinate+label pin
+  // isn't a real Google Place, which is why clicking it showed
+  // "place info could not load". Searching the actual landmark name lets
+  // Google resolve it to the real, clickable place.
+  const mapQuery = 'Shariff Plaza, Banex, Wuse 2, Abuja, Nigeria';
+  const mapSrc = `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=17&ie=UTF8&iwloc=B&output=embed`;
 
   return (
     <section id="store-map" className="w-full bg-[#13130f]">
@@ -23,6 +24,7 @@ export default function StoreMap() {
         <h2 className="font-unica text-3xl md:text-4xl uppercase tracking-widest text-[#fcf9f3]">
           VISIT OUR STORE
         </h2>
+        <p className="font-plex text-xs text-[#fcf9f3]/50 mt-2">{address}</p>
       </div>
 
       {/* ── Google Maps Embed ──────────────────────── */}

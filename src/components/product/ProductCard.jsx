@@ -29,7 +29,7 @@ export default function ProductCard({ product }) {
     <Link to={`/product/${product.id}`} className="group block">
       {/* Image Container */}
       <div
-        className="relative aspect-[4/5] overflow-hidden bg-[#f1eee7] mb-3"
+        className="relative aspect-[4/5] overflow-hidden mb-3"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >

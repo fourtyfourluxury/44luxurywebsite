@@ -11,6 +11,21 @@ import { supabase } from '../lib/supabase';
 // Cache: tableName -> Set of known column names
 const schemaCache = {};
 
+// Full known column sets, used only when a table has zero rows (so probing
+// via `select('*').limit(1)` returns no columns to read keys from). There is
+// no `get_table_columns` RPC in the database, so this is the real fallback —
+// keep it in sync with the columns added across migrations 001/017/018/020.
+const FULL_KNOWN_COLUMNS = {
+  products: new Set([
+    'id', 'name', 'sku', 'price', 'compare_price', 'category', 'collection_id',
+    'status', 'sizes', 'colors', 'images', 'description', 'short_description',
+    'is_new', 'is_featured', 'stock', 'seo_title', 'seo_description',
+    'is_best_seller', 'is_limited_edition', 'sort_order', 'video_url',
+    'subcategory', 'season', 'brand', 'material', 'weight', 'tags',
+    'created_at', 'updated_at',
+  ]),
+};
+
 /**
  * Returns the set of columns that actually exist in the given table.
  * Probes by running a minimal SELECT and checking the response columns.
@@ -38,26 +53,11 @@ export async function getExistingColumns(tableName) {
       return cols;
     }
 
-    // Empty table — use information_schema RPC if available
-    // Otherwise return a minimal known set
-    const { data: colData } = await supabase
-      .rpc('get_table_columns', { p_table_name: tableName })
-      .select();
-
-    if (colData && Array.isArray(colData)) {
-      const cols = new Set(colData.map(c => c.column_name));
-      schemaCache[tableName] = cols;
-      return cols;
-    }
-
-    // Final fallback: return the base columns we know exist for products
-    const BASE_PRODUCT_COLUMNS = new Set([
-      'id', 'name', 'sku', 'price', 'compare_price', 'category', 'collection_id',
-      'status', 'sizes', 'colors', 'images', 'description', 'short_description',
-      'is_new', 'is_featured', 'stock', 'created_at', 'updated_at',
-    ]);
-    schemaCache[tableName] = BASE_PRODUCT_COLUMNS;
-    return BASE_PRODUCT_COLUMNS;
+    // Empty table — there's no live row to read keys from, so fall back to
+    // the full known column set for this table (see FULL_KNOWN_COLUMNS above).
+    const cols = FULL_KNOWN_COLUMNS[tableName] || new Set();
+    schemaCache[tableName] = cols;
+    return cols;
   } catch (e) {
     console.warn(`[schemaDetector] Error probing ${tableName}:`, e);
     return new Set();
