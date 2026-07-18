@@ -27,6 +27,7 @@ import Terms from './pages/Terms';
 import ReturnPolicy from './pages/ReturnPolicy';
 import NotFound from './pages/NotFound';
 import AuthCallback from './pages/AuthCallback';
+import CategoryPage from './pages/CategoryPage';
 
 // ── Admin Pages ───────────────────────────────────────────────
 import AdminLogin from './pages/admin/AdminLogin';
@@ -155,6 +156,12 @@ function App() {
 
               {/* Products */}
               <Route path="/product/:id" element={<ProductDetail />} />
+
+              {/* Category pages */}
+              <Route path="/category/sweatshirts" element={<CategoryPage category="sweatshirts" />} />
+              <Route path="/category/caps" element={<CategoryPage category="caps" />} />
+              <Route path="/category/polo-shirts" element={<CategoryPage category="polo-shirts" />} />
+              <Route path="/category/tank-tops" element={<CategoryPage category="tank-tops" />} />
 
               {/* Commerce */}
               <Route path="/cart" element={<Cart />} />

@@ -6,7 +6,7 @@ import { useAuthStore } from '../../store/authStore';
 
 export default function Navbar({ isTransparent = false }) {
   const navigate = useNavigate();
-  const { collections, getCartCount, openCart } = useSiteStore();
+  const { getCartCount, openCart } = useSiteStore();
   const { isAuthenticated, profile } = useAuthStore();
   const isAdmin = profile?.role === 'admin';
   const cartCount = getCartCount();
@@ -19,9 +19,6 @@ export default function Navbar({ isTransparent = false }) {
 
   const searchRef = useRef(null);
 
-  const namedCollections = collections.filter(c =>
-    c.status === 'ACTIVE' && !['men', 'women'].includes(c.slug)
-  );
 
   // Focus search input when opened
   useEffect(() => {
@@ -73,71 +70,16 @@ export default function Navbar({ isTransparent = false }) {
   };
 
   const DRAWER_LINKS = [
-    { label: 'HOME', href: '/' },
+    { label: 'ALL PRODUCTS', href: '/shop' },
     {
       label: 'SHOP', children: [
-        { label: 'Men', href: '/shop/men' },
-        { label: 'Women', href: '/shop/women' },
-        { label: 'Collections', href: '/collections' },
-        { label: 'Accessories', href: collections.some(c => c.slug === 'accessories' && c.status === 'ACTIVE') ? '/collections/accessories' : '/shop?q=accessories' },
-        { label: 'New Arrivals', href: collections.some(c => c.slug === 'new-arrivals' && c.status === 'ACTIVE') ? '/collections/new-arrivals' : '/shop?filter=new' },
-        { label: 'Sale', href: '/shop?filter=sale' },
+        { label: 'Sweatshirts', href: '/category/sweatshirts' },
+        { label: 'Caps', href: '/category/caps' },
+        { label: 'Polo Shirts', href: '/category/polo-shirts' },
+        { label: 'Tank Tops', href: '/category/tank-tops' },
       ]
     },
-    {
-      label: 'MEN', children: [
-        { label: 'T-Shirts', slug: 't-shirts', fallback: '/shop/men?q=t-shirt' },
-        { label: 'Polos', slug: 'polos', fallback: '/shop/men?q=polo' },
-        { label: 'Hoodies', slug: 'hoodies-sweatshirts', fallback: '/shop/men?q=hoodie' },
-        { label: 'Tracksuits', slug: 'tracksuits', fallback: '/shop/men?q=tracksuit' },
-        { label: 'Denim', slug: 'denim', fallback: '/shop/men?q=denim' },
-        { label: 'Shorts', slug: 'shorts', fallback: '/shop/men?q=shorts' },
-        { label: 'Caps', slug: 'caps', fallback: '/shop/men?q=caps' },
-        { label: 'Socks', slug: 'socks', fallback: '/shop/men?q=socks' },
-      ].map(def => {
-        const found = collections.find(c => c.slug === def.slug && c.status === 'ACTIVE');
-        return {
-          label: found ? found.name : def.label,
-          href: found ? `/collections/${def.slug}` : def.fallback
-        };
-      })
-    },
-    {
-      label: 'WOMEN', children: [
-        { label: 'Crop Tops', slug: 'crop-tops', fallback: '/shop/women?q=crop-top' },
-        { label: 'T-Shirts', slug: 't-shirts', fallback: '/shop/women?q=t-shirt' },
-        { label: 'Tank Tops', slug: 'tank-tops', fallback: '/shop/women?q=tank-top' },
-        { label: 'Tracksuits', slug: 'tracksuits', fallback: '/shop/women?q=tracksuit' },
-        { label: 'Denim', slug: 'denim', fallback: '/shop/women?q=denim' },
-        { label: 'Shorts', slug: 'shorts', fallback: '/shop/women?q=shorts' },
-        { label: 'Caps', slug: 'caps', fallback: '/shop/women?q=caps' },
-      ].map(def => {
-        const found = collections.find(c => c.slug === def.slug && c.status === 'ACTIVE');
-        return {
-          label: found ? found.name : def.label,
-          href: found ? `/collections/${def.slug}` : def.fallback
-        };
-      })
-    },
-    {
-      label: 'COLLECTIONS', children: [
-        { label: 'Summer Collection', slug: 'summer-collection' },
-        { label: 'Essentials', slug: 'essentials' },
-        { label: 'Signature Collection', slug: 'signature-collection' },
-        { label: 'Limited Edition', slug: 'limited-edition' },
-        { label: 'Seasonal Drops', slug: 'seasonal-drops' },
-        { label: 'New Arrivals', slug: 'new-arrivals' }
-      ].map(def => {
-        const found = collections.find(c => c.slug === def.slug && c.status === 'ACTIVE');
-        return {
-          label: found ? found.name : def.label,
-          href: `/collections/${def.slug}`
-        };
-      })
-    },
     { label: 'ABOUT', href: '/about' },
-    { label: 'FAQ', href: '/faq' },
-    { label: 'SHIPPING', href: '/shipping' },
     { label: 'CONTACT', href: '/contact' },
   ];
 

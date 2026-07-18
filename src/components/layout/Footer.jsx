@@ -22,14 +22,13 @@ const WhatsAppIcon = () => (
 
 const footerLinks = {
   SHOP: [
-    { label: 'New Arrivals', href: '/shop?filter=new' },
-    { label: 'Men', href: '/shop/men' },
-    { label: 'Women', href: '/shop/women' },
-    { label: 'Collections', href: '/collections' },
+    { label: 'All Products', href: '/shop' },
+    { label: 'Sweatshirts', href: '/category/sweatshirts' },
+    { label: 'Caps', href: '/category/caps' },
+    { label: 'Polo Shirts', href: '/category/polo-shirts' },
+    { label: 'Tank Tops', href: '/category/tank-tops' },
   ],
   SUPPORT: [
-    { label: 'FAQ', href: '/faq' },
-    { label: 'Shipping', href: '/shipping' },
     { label: 'Contact', href: '/contact' },
     { label: 'Return Policy', href: '/return-policy' },
   ],
