@@ -167,6 +167,7 @@ function App() {
               <Route path="/category/skirts" element={<CategoryPage category="skirts" />} />
               <Route path="/category/crop-tops" element={<CategoryPage category="crop-tops" />} />
               <Route path="/category/socks" element={<CategoryPage category="socks" />} />
+              <Route path="/category/denim" element={<CategoryPage category="denim" />} />
 
               {/* Commerce */}
               <Route path="/cart" element={<Cart />} />

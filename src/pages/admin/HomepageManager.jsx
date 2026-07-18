@@ -1077,6 +1077,11 @@ function CategoriesEditorModal({ config, onSave, onClose }) {
       slug: '/category/socks',
       image: '',
     },
+    {
+      label: 'Denim',
+      slug: '/category/denim',
+      image: '',
+    },
   ];
 
   const initialCategories = config?.sections?.categories || config?.categories || defaultCategories;

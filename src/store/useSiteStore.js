@@ -104,6 +104,11 @@ export const useSiteStore = create(
           slug: '/category/socks',
           image: '',
         },
+        {
+          label: 'Denim',
+          slug: '/category/denim',
+          image: '',
+        },
       ],
 
       // ─── Orders (will be fetched per user) ──────────────────

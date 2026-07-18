@@ -18,17 +18,15 @@ const STEPS = [
 const SIZES = ['XS','S','M','L','XL','XXL','XXXL'];
 const PRESET_COLORS = ['Black','White','Navy','Beige','Grey','Brown','Olive','Burgundy','Cream'];
 const PRODUCT_CATEGORIES = [
-  'T-Shirts',
-  'Polos',
-  'Hoodies & Sweatshirts',
-  'Tracksuits',
-  'Denim',
-  'Crop Tops',
-  'Skirts',
+  'Sweatshirts',
+  'Polo Shirts',
   'Tank Tops',
   'Caps',
   'Socks',
-  'Accessories'
+  'Skirts',
+  'Crop Tops',
+  'Denim',
+  'Accessories',
 ];
 
 const Field = ({ label, required, error, children }) => (

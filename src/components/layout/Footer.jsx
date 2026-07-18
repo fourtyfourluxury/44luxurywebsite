@@ -30,6 +30,7 @@ const footerLinks = {
     { label: 'Skirts', href: '/category/skirts' },
     { label: 'Crop Tops', href: '/category/crop-tops' },
     { label: 'Socks', href: '/category/socks' },
+    { label: 'Denim', href: '/category/denim' },
   ],
   SUPPORT: [
     { label: 'Contact', href: '/contact' },

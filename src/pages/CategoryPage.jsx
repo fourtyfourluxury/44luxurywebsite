@@ -48,6 +48,12 @@ const CATEGORY_META = {
     keywords: ['sock', 'socks'],
     bannerImage: null,
   },
+  denim: {
+    title: 'DENIM',
+    subtitle: 'Raw African luxury in every stitch.',
+    keywords: ['denim', 'jean', 'jeans'],
+    bannerImage: null,
+  },
 };
 
 // ── Filter bar (same design as Shop) ──────────────────────────────────────────
