@@ -100,7 +100,6 @@ export const useSiteStore = create(
       settings: {
         brandName: '44LUXURY',
         currency: '₦',
-        adminPassword: '44luxury2024',
         announcementDefault: 'FREE DELIVERY ON ORDERS ABOVE ₦150,000',
       },
 
@@ -113,11 +112,6 @@ export const useSiteStore = create(
 
       // ─── Recently Viewed ─────────────────────────────────────
       recentlyViewed: [],
-
-      // ─── Auth (deprecated - use authStore instead) ──────────
-      user: null,
-      isAuthenticated: false,
-      isAdmin: false,
 
       // ─── Hydration ───────────────────────────────────────────
       _hasHydrated: false,
@@ -424,11 +418,6 @@ export const useSiteStore = create(
       // alias used by AdminHeader publish
       setAnnouncementMessages: (messages) => set((state) => ({
         announcement: { ...state.announcement, messages },
-      })),
-
-      // ─── Admin — Homepage Video ───────────────────────────────
-      updateHomepageVideo: (data) => set((state) => ({
-        homepageVideo: { ...state.homepageVideo, ...data },
       })),
 
       // ─── Admin — Homepage Content ─────────────────────────────
