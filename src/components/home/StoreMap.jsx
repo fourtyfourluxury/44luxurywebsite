@@ -5,9 +5,16 @@ export default function StoreMap() {
 
   // CMS values with fallbacks
   const visible = contactMap?.visible !== false;
-  const address = contactMap?.address || 'Shop C426, Shariff Plaza, Banex, Wuse 2, Abuja, FCT, Nigeria';
+  const lat = contactMap?.lat ?? 9.0573;
+  const lng = contactMap?.lng ?? 7.4845;
 
   if (!visible) return null;
+
+  // Query by exact coordinates (not a text address search) so the pin always
+  // drops precisely on the store — a text query depends on Google's fuzzy
+  // geocoding and can drift to a nearby building or the wrong plaza.
+  const pinLabel = '44+Luxury+Store';
+  const mapSrc = `https://maps.google.com/maps?q=${lat},${lng}(${pinLabel})&z=17&ie=UTF8&iwloc=B&output=embed`;
 
   return (
     <section id="store-map" className="w-full bg-[#13130f]">
@@ -38,7 +45,7 @@ export default function StoreMap() {
             scrolling="no"
             marginHeight="0"
             marginWidth="0"
-            src={`https://maps.google.com/maps?width=100%25&height=600&hl=en&q=${encodeURIComponent("Shop C426, Shariff Plaza, Banex, Wuse 2, Abuja, FCT, Nigeria")} +(44 Luxury Store)&t=&z=16&ie=UTF8&iwloc=B&output=embed`}
+            src={mapSrc}
             allowFullScreen
           />
         </div>

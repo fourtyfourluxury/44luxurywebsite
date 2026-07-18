@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { X, Trash2, Plus, Minus } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import { useSiteStore } from '../../store/useSiteStore';
 
 export default function CartDrawer() {
-  const { cart, isCartOpen, closeCart, removeFromCart, updateQty, getCartTotal } = useSiteStore();
+  const { cart, isCartOpen, closeCart, removeFromCart, getCartTotal } = useSiteStore();
   const total = getCartTotal();
 
   if (!isCartOpen) return null;
@@ -66,21 +66,9 @@ export default function CartDrawer() {
                 </div>
 
                 <div className="flex items-center justify-between mt-auto pt-3">
-                  <div className="flex items-center gap-3 border border-[#1c1c18]/20">
-                    <button
-                      onClick={() => updateQty(item.cartId, item.qty - 1)}
-                      className="w-8 h-8 flex items-center justify-center text-[#1c1c18] hover:bg-[#1c1c18]/5 transition-colors"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <span className="font-grotesk font-bold text-sm text-[#1c1c18] min-w-[20px] text-center">{item.qty}</span>
-                    <button
-                      onClick={() => updateQty(item.cartId, item.qty + 1)}
-                      className="w-8 h-8 flex items-center justify-center text-[#1c1c18] hover:bg-[#1c1c18]/5 transition-colors"
-                    >
-                      <Plus size={14} />
-                    </button>
-                  </div>
+                  <span className="font-grotesk text-xs text-[#5f5e5e] uppercase tracking-wide">
+                    Qty: {item.qty}
+                  </span>
                   <span className="font-grotesk font-bold text-sm text-[#1c1c18]">
                     ₦{(item.price * item.qty).toLocaleString()}
                   </span>
@@ -97,7 +85,6 @@ export default function CartDrawer() {
               <span className="font-grotesk font-semibold text-sm uppercase tracking-wider text-[#5f5e5e]">Subtotal</span>
               <span className="font-unica text-2xl tracking-tighter text-[#1c1c18]">₦{total.toLocaleString()}</span>
             </div>
-            <p className="font-plex text-xs text-[#5f5e5e]">Shipping and taxes calculated at checkout.</p>
             <Link
               to="/checkout"
               onClick={closeCart}

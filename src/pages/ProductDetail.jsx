@@ -23,6 +23,7 @@ export default function ProductDetail() {
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedImage, setSelectedImage] = useState(0);
+  const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const [sizeError, setSizeError] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -60,7 +61,7 @@ export default function ProductDetail() {
       setSizeError(true);
       return;
     }
-    addToCart(product, selectedSize, selectedColor);
+    addToCart(product, selectedSize, selectedColor, quantity);
     toast(`${product.name} added to bag`, 'cart');
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
@@ -71,7 +72,7 @@ export default function ProductDetail() {
       setSizeError(true);
       return;
     }
-    addToCart(product, selectedSize, selectedColor);
+    addToCart(product, selectedSize, selectedColor, quantity);
     navigate('/checkout');
   };
 
@@ -79,7 +80,7 @@ export default function ProductDetail() {
     .filter(p => p.id !== product.id && p.status !== 'DRAFT' && p.category === product.category)
     .slice(0, 4);
 
-  const collectionName = (typeof product.collection === 'string' ? product.collection : product.collection?.name || product.category || '')?.replace(/-/g, ' ')?.toUpperCase();
+  const collectionName = (typeof product.collection === 'string' ? product.collection : product.collection?.name || '')?.replace(/-/g, ' ')?.toUpperCase();
 
   return (
     <div className="min-h-screen bg-[#fcf9f3]">
@@ -137,9 +138,11 @@ export default function ProductDetail() {
           {/* ── Product Info ──────────────────────────── */}
           <div className="lg:w-[45%] flex flex-col pt-2">
             {/* Meta */}
-            <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.2em] text-[#5f5e5e] mb-2">
-              {collectionName}
-            </p>
+            {collectionName && (
+              <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.2em] text-[#5f5e5e] mb-2">
+                {collectionName}
+              </p>
+            )}
             <h1 className="font-unica text-4xl md:text-5xl uppercase tracking-tighter text-[#1c1c18] leading-tight mb-4">
               {product.name}
             </h1>
@@ -204,6 +207,28 @@ export default function ProductDetail() {
               </div>
             )}
 
+            {/* Quantity */}
+            <div className="mb-6">
+              <p className="font-grotesk font-bold text-[10px] uppercase tracking-widest text-[#1c1c18] mb-3">
+                Quantity
+              </p>
+              <div className="flex items-center border border-[#1c1c18]/20 w-fit">
+                <button
+                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                  className="w-11 h-11 flex items-center justify-center text-[#1c1c18] hover:bg-[#1c1c18]/5 transition-colors text-lg"
+                >
+                  −
+                </button>
+                <span className="font-grotesk font-bold text-sm text-[#1c1c18] min-w-[40px] text-center">{quantity}</span>
+                <button
+                  onClick={() => setQuantity(q => q + 1)}
+                  className="w-11 h-11 flex items-center justify-center text-[#1c1c18] hover:bg-[#1c1c18]/5 transition-colors text-lg"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
             {/* ADD TO BAG + BUY IT NOW */}
             <div className="flex flex-col gap-3 mb-6">
               <button
@@ -228,11 +253,6 @@ export default function ProductDetail() {
                 </button>
               )}
             </div>
-
-            <p className="font-plex text-xs text-[#5f5e5e] flex items-center gap-1.5 mb-8">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              Free shipping on orders over ₦150,000
-            </p>
 
             {/* Product Description Only */}
             {product.description && (
