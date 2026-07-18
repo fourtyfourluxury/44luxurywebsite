@@ -12,9 +12,9 @@ import { toast } from '../../components/ui/ToastProvider';
 import ProductEditor from './ProductEditor';
 
 const STATUS_CFG = {
-  ACTIVE:       { dot: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Active' },
+  ACTIVE:       { dot: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'In Stock' },
   DRAFT:        { dot: 'bg-white/30',    text: 'text-white/40',    bg: 'bg-white/5',        label: 'Draft' },
-  'SOLD OUT':   { dot: 'bg-red-400',     text: 'text-red-400',     bg: 'bg-red-500/10',     label: 'Sold Out' },
+  'SOLD OUT':   { dot: 'bg-red-400',     text: 'text-red-400',     bg: 'bg-red-500/10',     label: 'Out of Stock' },
   'PRE-ORDER':  { dot: 'bg-blue-400',    text: 'text-blue-400',    bg: 'bg-blue-500/10',    label: 'Pre-Order' },
 };
 
@@ -48,7 +48,6 @@ export default function ProductsManager() {
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
   const [filterStatus, setFilter]     = useState('');
-  const [filterCat, setFilterCat]     = useState('');
   const [editorOpen, setEditorOpen]   = useState(false);
   const [editing, setEditing]         = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -59,7 +58,7 @@ export default function ProductsManager() {
   const [viewMode, setViewMode]       = useState('table'); // 'table' | 'grid'
   const [missingCols, setMissingCols] = useState([]);
 
-  useEffect(() => { load(); }, [filterStatus, filterCat]);
+  useEffect(() => { load(); }, [filterStatus]);
 
   useEffect(() => {
     const t = setTimeout(() => load(), 400);
@@ -69,7 +68,7 @@ export default function ProductsManager() {
   const load = async () => {
     setLoading(true);
     const [{ products: data }, { stats: s }] = await Promise.all([
-      getAllProducts({ search, status: filterStatus, category: filterCat }),
+      getAllProducts({ search, status: filterStatus }),
       getProductStats(),
     ]);
     setProducts(data || []);
@@ -233,22 +232,11 @@ export default function ProductsManager() {
           className="bg-[#141410] border border-white/[0.06] rounded-xl px-3 py-2.5 text-[12px] text-white/60 outline-none focus:border-white/20 transition-colors"
         >
           <option value="">All Status</option>
-          <option value="ACTIVE">Active</option>
+          <option value="ACTIVE">In Stock</option>
           <option value="DRAFT">Draft</option>
-          <option value="SOLD OUT">Sold Out</option>
+          <option value="SOLD OUT">Out of Stock</option>
           <option value="PRE-ORDER">Pre-Order</option>
         </select>
-        <select
-          value={filterCat}
-          onChange={e => setFilterCat(e.target.value)}
-          className="bg-[#141410] border border-white/[0.06] rounded-xl px-3 py-2.5 text-[12px] text-white/60 outline-none focus:border-white/20 transition-colors"
-        >
-          <option value="">All Categories</option>
-          <option value="men">Men</option>
-          <option value="women">Women</option>
-          <option value="unisex">Unisex</option>
-        </select>
-
         {/* Legend */}
         <div className="ml-auto flex items-center gap-3 text-[10px] text-white/25 font-semibold uppercase tracking-wider">
           <span className="text-[#c9a96e]">★</span> Featured
@@ -326,9 +314,8 @@ export default function ProductsManager() {
                 </td>
 
                 {/* Category */}
-                <td className="px-5 py-3.5 text-[12px] text-white/50 capitalize">
-                  {p.category}
-                  {p.subcategory && <span className="block text-[10px] text-white/25">{p.subcategory}</span>}
+                <td className="px-5 py-3.5 text-[12px] text-white/50">
+                  {p.subcategory || '—'}
                 </td>
 
                 {/* Price */}
@@ -399,7 +386,7 @@ export default function ProductsManager() {
                         <div className="border-t border-white/[0.06] my-1" />
                         {p.status !== 'ACTIVE' && (
                           <button onClick={() => handleStatusQuick(p.id, 'ACTIVE')} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-emerald-400 hover:bg-emerald-500/5 transition-colors">
-                            ● Publish
+                            ● Mark In Stock
                           </button>
                         )}
                         {p.status !== 'DRAFT' && (
@@ -409,7 +396,7 @@ export default function ProductsManager() {
                         )}
                         {p.status !== 'SOLD OUT' && (
                           <button onClick={() => handleStatusQuick(p.id, 'SOLD OUT')} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-red-400 hover:bg-red-500/5 transition-colors">
-                            ● Mark Sold Out
+                            ● Mark Out of Stock
                           </button>
                         )}
                         {p.status !== 'PRE-ORDER' && (

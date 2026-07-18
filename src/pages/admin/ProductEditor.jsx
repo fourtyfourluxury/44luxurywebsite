@@ -10,7 +10,7 @@ const STEPS = [
   { id: 1, label: 'Basic Info',  desc: 'Name, category, collection' },
   { id: 2, label: 'Images',      desc: 'Upload product photos' },
   { id: 3, label: 'Variants',    desc: 'Sizes and colors' },
-  { id: 4, label: 'Pricing',     desc: 'Price, stock, tags' },
+  { id: 4, label: 'Pricing',     desc: 'Price, stock, status' },
   { id: 5, label: 'Publish',     desc: 'Review and go live' },
 ];
 
@@ -68,13 +68,13 @@ export default function ProductEditor({ product, onClose, onSave }) {
   const videoInputRef = useRef();
 
   const [form, setForm] = useState({
-    name: '', sku: '', category: 'men', collection_id: '',
+    name: '', sku: '', category: 'unisex', collection_id: '',
     subcategory: '', season: '',
     short_description: '', description: '',
     images: [], video_url: '',
     sizes: [], colors: [],
     price: '', compare_price: '', stock: '',
-    is_new: false, is_featured: false, is_best_seller: false, is_limited_edition: false, status: 'DRAFT',
+    is_new: false, is_featured: false, is_best_seller: false, is_limited_edition: false, status: 'ACTIVE',
   });
 
   useEffect(() => {
@@ -83,9 +83,11 @@ export default function ProductEditor({ product, onClose, onSave }) {
       setForm({
         name: product.name || '',
         sku: product.sku || '',
-        category: product.category || 'men',
+        // Gender is no longer editable here — carry the existing value through unchanged
+        category: product.category || 'unisex',
         collection_id: product.collection_id || '',
         subcategory: product.subcategory || '',
+        // Season is no longer editable here — carry the existing value through unchanged
         season: product.season || '',
         short_description: product.short_description || '',
         description: product.description || '',
@@ -96,11 +98,12 @@ export default function ProductEditor({ product, onClose, onSave }) {
         price: product.price || '',
         compare_price: product.compare_price || '',
         stock: product.stock || '',
+        // Tags/badges are no longer editable here — carry existing values through unchanged
         is_new: product.is_new || false,
         is_featured: product.is_featured || false,
         is_best_seller: product.is_best_seller || false,
         is_limited_edition: product.is_limited_edition || false,
-        status: product.status || 'DRAFT',
+        status: product.status || 'ACTIVE',
       });
     }
   }, [product]);
@@ -229,7 +232,6 @@ export default function ProductEditor({ product, onClose, onSave }) {
     const e = {};
     if (step === 1) {
       if (!form.name.trim()) e.name = 'Product name is required';
-      if (!form.category)    e.category = 'Category is required';
     }
     if (step === 2 && form.images.length === 0) e.images = 'At least one image is required';
     if (step === 4) {
@@ -255,7 +257,7 @@ export default function ProductEditor({ product, onClose, onSave }) {
       subcategory: form.subcategory || null,
       season: form.season || null,
       video_url: form.video_url || null,
-      status: publish ? (form.status === 'DRAFT' ? 'ACTIVE' : form.status) : 'DRAFT',
+      status: publish ? form.status : 'DRAFT',
     };
     
     const result = product
@@ -289,7 +291,7 @@ export default function ProductEditor({ product, onClose, onSave }) {
   };
 
   const stepDone = (s) => {
-    if (s === 1) return !!form.name && !!form.category;
+    if (s === 1) return !!form.name;
     if (s === 2) return form.images.length > 0;
     if (s === 3) return true;
     if (s === 4) return !!form.price && form.stock !== '';
@@ -344,43 +346,23 @@ export default function ProductEditor({ product, onClose, onSave }) {
               <Field label="Product Name" required error={errors.name}>
                 <Input value={form.name} onChange={e => { set('name', e.target.value); if (!form.sku) set('sku', generateSKU(e.target.value, form.category)); }} placeholder="e.g. Signature Cargo Trousers" error={errors.name} />
               </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Gender" required error={errors.category}>
-                  <div className="flex gap-2">
-                    {['men','women','unisex'].map(c => (
-                      <button key={c} type="button" onClick={() => set('category', c)}
-                        className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all border
-                          ${form.category === c ? 'bg-[#c9a96e] text-[#0a0a08] border-[#c9a96e]' : 'border-white/[0.08] text-white/40 hover:border-white/20 hover:text-white/70'}`}>
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-                <Field label="Product Category" error={errors.subcategory}>
-                  <select value={form.subcategory} onChange={e => set('subcategory', e.target.value)}
-                    className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors">
-                    <option value="">— Select Category —</option>
-                    {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Collection">
-                  <select value={form.collection_id} onChange={e => set('collection_id', e.target.value)}
-                    className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors">
-                    <option value="">— No Collection —</option>
-                    {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </Field>
-                <Field label="Season">
-                  <Input value={form.season} onChange={e => set('season', e.target.value)} placeholder="e.g. SS25, FW25, Essentials" />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="SKU (optional)">
-                  <Input value={form.sku} onChange={e => set('sku', e.target.value)} placeholder="Auto-generated" />
-                </Field>
-              </div>
+              <Field label="Product Category" error={errors.subcategory}>
+                <select value={form.subcategory} onChange={e => set('subcategory', e.target.value)}
+                  className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors">
+                  <option value="">— Select Category —</option>
+                  {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </Field>
+              <Field label="Collection">
+                <select value={form.collection_id} onChange={e => set('collection_id', e.target.value)}
+                  className="w-full bg-[#0f0f0c] border border-white/[0.08] focus:border-white/25 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors">
+                  <option value="">— No Collection —</option>
+                  {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </Field>
+              <Field label="SKU (optional)">
+                <Input value={form.sku} onChange={e => set('sku', e.target.value)} placeholder="Auto-generated" />
+              </Field>
               <Field label="Short Description">
                 <Textarea rows={2} value={form.short_description} onChange={e => set('short_description', e.target.value)} placeholder="One or two lines shown on product cards..." />
               </Field>
@@ -531,32 +513,12 @@ export default function ProductEditor({ product, onClose, onSave }) {
               <Field label="Stock Quantity" required error={errors.stock}>
                 <Input type="number" value={form.stock} onChange={e => set('stock', e.target.value)} placeholder="0" error={errors.stock} />
               </Field>
-              <div className="space-y-3">
-                <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Tags & Visibility</p>
-                {[
-                  { k: 'is_new',            label: 'New Arrival',     desc: 'Shows "NEW" badge and appears in New Arrivals section' },
-                  { k: 'is_featured',       label: 'Featured',        desc: 'Appears in the Featured Products section on homepage' },
-                  { k: 'is_best_seller',    label: 'Best Seller',     desc: 'Shows "BEST SELLER" badge on product cards' },
-                  { k: 'is_limited_edition', label: 'Limited Edition', desc: 'Shows "LIMITED" badge — marks as exclusive drop' },
-                ].map(t => (
-                  <label key={t.k} className="flex items-start gap-4 p-4 bg-[#141410] border border-white/[0.06] rounded-xl cursor-pointer hover:border-white/10 transition-colors">
-                    <div onClick={() => set(t.k, !form[t.k])} className={`w-10 h-6 rounded-full relative transition-colors shrink-0 mt-0.5 cursor-pointer ${form[t.k] ? 'bg-[#c9a96e]' : 'bg-white/10'}`}>
-                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${form[t.k] ? 'left-5' : 'left-1'}`} />
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-semibold text-white/70">{t.label}</p>
-                      <p className="text-[11px] text-white/30 mt-0.5">{t.desc}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
               <Field label="Status">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {[
-                    ['DRAFT', 'Draft'],
-                    ['ACTIVE', 'Active'],
+                    ['ACTIVE', 'In Stock'],
+                    ['SOLD OUT', 'Out of Stock'],
                     ['PRE-ORDER', 'Pre-Order'],
-                    ['SOLD OUT', 'Sold Out']
                   ].map(([v, l]) => (
                     <button key={v} type="button" onClick={() => set('status', v)}
                       className={`py-3 px-3 rounded-xl text-[11px] font-semibold border transition-all text-center
@@ -586,10 +548,10 @@ export default function ProductEditor({ product, onClose, onSave }) {
                   </div>
                   <p className="text-xl font-bold text-white">{form.name || '—'}</p>
                   <p className="text-[12px] text-white/40">
-                    {form.category?.toUpperCase()}
-                    {form.subcategory ? ` · ${form.subcategory}` : ''}
-                    {form.collection_id ? ` · ${collections.find(c=>c.id===form.collection_id)?.name}` : ''}
-                    {form.season ? ` · ${form.season}` : ''}
+                    {[
+                      form.subcategory,
+                      form.collection_id ? collections.find(c => c.id === form.collection_id)?.name : null,
+                    ].filter(Boolean).join(' · ')}
                   </p>
                   <div className="flex items-baseline gap-3">
                     <p className="text-xl font-bold text-white">₦{form.price ? parseFloat(form.price).toLocaleString() : '0'}</p>

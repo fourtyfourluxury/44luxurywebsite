@@ -57,11 +57,11 @@ export default function ProductCard({ product }) {
       </div>
 
       {/* Product Info */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col items-center gap-1.5 text-center">
         <h3 className="font-unica text-base md:text-lg uppercase tracking-tight text-[#1c1c18] leading-tight">
           {product.name}
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2">
           <p className={`font-grotesk font-bold text-sm ${hasSale ? 'text-[#1c6b5a]' : 'text-[#1c1c18]'}`}>
             ₦{product.price?.toLocaleString()}
           </p>
