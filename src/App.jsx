@@ -29,6 +29,7 @@ import ReturnPolicy from './pages/ReturnPolicy';
 import NotFound from './pages/NotFound';
 import AuthCallback from './pages/AuthCallback';
 import CategoryPage from './pages/CategoryPage';
+import Partnership from './pages/Partnership';
 
 // ── Admin Pages ───────────────────────────────────────────────
 import AdminLogin from './pages/admin/AdminLogin';
@@ -155,6 +156,7 @@ function App() {
                 {/* Collections */}
                 <Route path="/collections" element={<AllCollections />} />
                 <Route path="/collections/:slug" element={<Collections />} />
+                <Route path="/partnerships/:slug" element={<Partnership />} />
 
               {/* Products */}
               <Route path="/product/:id" element={<ProductDetail />} />

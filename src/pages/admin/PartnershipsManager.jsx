@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, X, ExternalLink, Save, Upload, Star, Globe, Calendar, Package } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, ExternalLink, Save, Upload, Star, Globe, Calendar, Package, Check, Image as ImageIcon } from 'lucide-react';
 import { getAllPartnerships, createPartnership, updatePartnership, deletePartnership } from '../../services/admin/partnershipAdminService';
 import { uploadFile, BUCKETS } from '../../services/storageService';
 import { toast } from '../../components/ui/ToastProvider';
+import { useSiteStore } from '../../store/useSiteStore';
 
 const EMPTY = {
   name: '',
@@ -15,6 +16,7 @@ const EMPTY = {
   logo_url: '',
   banner_url: '',
   is_featured: false,
+  featured_product_ids: [],
   seo_title: '',
   seo_description: '',
 };
@@ -26,6 +28,7 @@ const STATUS_CFG = {
 };
 
 export default function PartnershipsManager() {
+  const { products } = useSiteStore();
   const [partnerships, setPartnerships] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -36,6 +39,7 @@ export default function PartnershipsManager() {
   const [uploading, setUploading] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [errors, setErrors] = useState({});
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -73,6 +77,7 @@ export default function PartnershipsManager() {
       logo_url: p.logo_url || '',
       banner_url: p.banner_url || '',
       is_featured: p.is_featured || false,
+      featured_product_ids: p.featured_product_ids || [],
       seo_title: p.seo_title || '',
       seo_description: p.seo_description || '',
     });
@@ -375,6 +380,37 @@ export default function PartnershipsManager() {
                 </div>
               </div>
 
+              {/* Products */}
+              <div className="border-t border-white/[0.04] pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="label !mb-0">Products in this Partnership</label>
+                  <button
+                    type="button"
+                    onClick={() => setProductPickerOpen(true)}
+                    className="text-[11px] font-bold text-[#c9a96e] hover:text-[#d4b87e] transition-colors"
+                  >
+                    {form.featured_product_ids.length > 0 ? 'Edit Products' : '+ Select Products'}
+                  </button>
+                </div>
+                {form.featured_product_ids.length === 0 ? (
+                  <p className="text-[11px] text-amber-400/80">No products yet — this partnership's page will show "Coming Soon" until you add some.</p>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2">
+                    {form.featured_product_ids.map(id => {
+                      const product = products.find(pr => pr.id === id);
+                      if (!product) return null;
+                      return (
+                        <div key={id} className="aspect-square bg-white/5 border border-white/10 rounded-lg overflow-hidden flex items-center justify-center">
+                          {product.images?.[0]
+                            ? <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                            : <ImageIcon size={16} className="text-white/10" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* SEO */}
               <div className="border-t border-white/[0.04] pt-4 space-y-3">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-white/30">SEO</p>
@@ -392,6 +428,16 @@ export default function PartnershipsManager() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Product Picker */}
+      {productPickerOpen && (
+        <ProductPickerModal
+          products={products}
+          selectedIds={form.featured_product_ids}
+          onSave={(ids) => { setF('featured_product_ids', ids); setProductPickerOpen(false); }}
+          onClose={() => setProductPickerOpen(false)}
+        />
       )}
 
       {/* Delete Confirm */}
@@ -414,6 +460,78 @@ export default function PartnershipsManager() {
         .input { width: 100%; background: #161612; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 10px 14px; font-size: 12px; color: white; outline: none; transition: border-color 0.15s; }
         .input:focus { border-color: rgba(255,255,255,0.2); }
       `}</style>
+    </div>
+  );
+}
+
+// ── Product Picker Modal ──────────────────────────────────────────────────────
+function ProductPickerModal({ products, selectedIds, onSave, onClose }) {
+  const [selected, setSelected] = useState(selectedIds || []);
+  const [search, setSearch] = useState('');
+
+  const toggle = (id) => {
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const filtered = products.filter(p =>
+    p.status === 'ACTIVE' && p.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-[#10100d] border border-white/10 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] shrink-0">
+          <h3 className="text-[14px] font-bold text-white">Select Products for this Partnership</h3>
+          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors"><X size={18} /></button>
+        </div>
+
+        <div className="px-6 pt-4 shrink-0">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search products..."
+              className="w-full bg-[#161612] border border-white/[0.08] rounded-xl pl-9 pr-4 py-2.5 text-[12px] text-white placeholder-white/25 outline-none focus:border-white/20 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div className="p-6 overflow-y-auto flex-1 space-y-2">
+          {filtered.length === 0 ? (
+            <p className="text-[12px] text-white/30 text-center py-8">No products match your search.</p>
+          ) : filtered.map(product => {
+            const isSelected = selected.includes(product.id);
+            return (
+              <div
+                key={product.id}
+                onClick={() => toggle(product.id)}
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${isSelected ? 'bg-white/10 border-white/20' : 'bg-[#141410] border-transparent hover:border-white/10'}`}
+              >
+                <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${isSelected ? 'border-[#c9a96e] bg-[#c9a96e]' : 'border-white/20'}`}>
+                  {isSelected && <Check size={12} className="text-black" />}
+                </div>
+                <div className="w-10 h-10 rounded bg-white/5 overflow-hidden shrink-0">
+                  {product.images?.[0]
+                    ? <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
+                    : <ImageIcon size={20} className="text-white/10 m-auto mt-2" />}
+                </div>
+                <div className="flex-1 truncate">
+                  <p className="text-[12px] font-semibold text-white/90 truncate">{product.name}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">₦{(product.price || 0).toLocaleString()}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex gap-3 p-6 pt-0 shrink-0">
+          <button onClick={onClose} className="flex-1 py-3 border border-white/10 rounded-xl text-[12px] font-semibold text-white/60 hover:text-white transition-colors">Cancel</button>
+          <button onClick={() => onSave(selected)} className="flex-1 py-3 bg-white text-black rounded-xl text-[12px] font-bold hover:bg-white/90 transition-colors">
+            Save Selection ({selected.length})
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

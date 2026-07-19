@@ -3,7 +3,8 @@ import { persist } from 'zustand/middleware';
 import * as productService from '../services/productService';
 import * as collectionService from '../services/collectionService';
 import * as homepageService from '../services/homepageService';
-import { subscribeToHomepageConfig, subscribeToHeroSlides, subscribeToProducts, subscribeToCollections, subscribeToHomepageSections } from '../services/realtimeService';
+import { getPartnerships } from '../services/partnershipService';
+import { subscribeToHomepageConfig, subscribeToHeroSlides, subscribeToProducts, subscribeToCollections, subscribeToHomepageSections, subscribeToPartnerships } from '../services/realtimeService';
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +14,7 @@ export const useSiteStore = create(
       // ─── Data State ──────────────────────────────────────────
       products: [],
       collections: [],
+      partnerships: [],
       heroSlides: [],
       loading: true,
       initialized: false,
@@ -166,6 +168,13 @@ export const useSiteStore = create(
             throw new Error(collectionsError);
           }
 
+          // Fetch partnerships from Supabase
+          const { partnerships, error: partnershipsError } = await getPartnerships();
+          if (partnershipsError) {
+            console.warn('Error fetching partnerships:', partnershipsError);
+            // Don't throw - partnerships are optional
+          }
+
           // Fetch homepage config from Supabase
           const { config: homepageConfig, error: homepageError } = await homepageService.getHomepageConfig();
           if (homepageError) {
@@ -189,6 +198,7 @@ export const useSiteStore = create(
           set({
             products: products || [],
             collections: collections || [],
+            partnerships: partnerships || [],
             heroSlides: heroSlides || [],
             homepageSections: homepageSections || [],
             // Update homepage sections from config
@@ -319,6 +329,12 @@ export const useSiteStore = create(
           set({ homepageSections: sections || [] });
         });
 
+        // Subscribe to partnerships changes
+        const partnershipsChannel = subscribeToPartnerships(() => {
+          console.log('🔄 Realtime: Partnerships table updated, refetching...');
+          get().refreshPartnerships();
+        });
+
         // Return cleanup function
         return () => {
           console.log('🔌 Unsubscribing from realtime updates');
@@ -327,6 +343,7 @@ export const useSiteStore = create(
           if (productsChannel) productsChannel.unsubscribe();
           if (collectionsChannel) collectionsChannel.unsubscribe();
           if (sectionsChannel) sectionsChannel.unsubscribe();
+          if (partnershipsChannel) partnershipsChannel.unsubscribe();
         };
       },
 
@@ -342,6 +359,13 @@ export const useSiteStore = create(
         const { collections, error } = await collectionService.getCollections();
         if (!error && collections) {
           set({ collections });
+        }
+      },
+
+      refreshPartnerships: async () => {
+        const { partnerships, error } = await getPartnerships();
+        if (!error) {
+          set({ partnerships });
         }
       },
 

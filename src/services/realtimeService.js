@@ -478,6 +478,37 @@ export function subscribeToHomepageSections(callback) {
 }
 
 /**
+ * Subscribe to partnership updates (for admin panel + storefront)
+ * @param {Function} callback - Callback function for updates
+ * @returns {Object} Subscription object
+ */
+export function subscribeToPartnerships(callback) {
+  const subscription = supabase
+    .channel('partnerships-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'partnerships'
+      },
+      (payload) => {
+        console.log('🔄 Realtime: Partnerships changed', payload);
+        callback({
+          event: payload.eventType,
+          partnership: payload.new || payload.old,
+          timestamp: new Date()
+        });
+      }
+    )
+    .subscribe((status) => {
+      console.log('📡 Partnerships subscription status:', status);
+    });
+
+  return subscription;
+}
+
+/**
  * Create a presence channel for real-time user presence
  * @param {string} channelName - Channel name
  * @param {Object} userInfo - User information

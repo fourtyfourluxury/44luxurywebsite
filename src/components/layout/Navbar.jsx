@@ -6,7 +6,7 @@ import { useAuthStore } from '../../store/authStore';
 
 export default function Navbar({ isTransparent = false }) {
   const navigate = useNavigate();
-  const { getCartCount, openCart } = useSiteStore();
+  const { getCartCount, openCart, collections, partnerships } = useSiteStore();
   const { isAuthenticated, profile } = useAuthStore();
   const isAdmin = profile?.role === 'admin';
   const cartCount = getCartCount();
@@ -69,9 +69,11 @@ export default function Navbar({ isTransparent = false }) {
     }, 350);
   };
 
+  const activeCollections = (collections || []).filter(c => c.status === 'ACTIVE');
+  const activePartnerships = (partnerships || []).filter(p => p.status === 'ACTIVE');
+
   const DRAWER_LINKS = [
     { label: 'ALL PRODUCTS', href: '/shop' },
-    { label: 'COLLECTIONS', href: '/collections' },
     {
       label: 'SHOP', children: [
         { label: 'Sweatshirts', href: '/category/sweatshirts' },
@@ -84,9 +86,17 @@ export default function Navbar({ isTransparent = false }) {
         { label: 'Denim', href: '/category/denim' },
       ]
     },
+    activeCollections.length > 0 && {
+      label: 'COLLECTIONS',
+      children: activeCollections.map(c => ({ label: c.name, href: `/collections/${c.slug}` })),
+    },
+    activePartnerships.length > 0 && {
+      label: 'PARTNERSHIPS',
+      children: activePartnerships.map(p => ({ label: p.name, href: `/partnerships/${p.slug}` })),
+    },
     { label: 'ABOUT', href: '/about' },
     { label: 'CONTACT', href: '/contact' },
-  ];
+  ].filter(Boolean);
 
   return (
     <>
@@ -193,7 +203,7 @@ export default function Navbar({ isTransparent = false }) {
                     <>
                       <button
                         onClick={() => setExpandedSection(expandedSection === link.label ? null : link.label)}
-                        className="w-full flex items-center justify-between px-6 py-4 font-unica text-2xl uppercase tracking-tight text-[#fcf9f3] hover:text-[#D4AF37] transition-colors border-b border-[#fcf9f3]/5"
+                        className="w-full flex items-center justify-between px-6 py-3.5 font-unica text-lg uppercase tracking-tight text-[#fcf9f3] hover:text-[#D4AF37] transition-colors border-b border-[#fcf9f3]/5"
                       >
                         {link.label}
                         <ChevronDown
@@ -208,7 +218,7 @@ export default function Navbar({ isTransparent = false }) {
                               key={child.href}
                               to={child.href}
                               onClick={closeDrawer}
-                              className="block px-10 py-3 font-grotesk text-sm uppercase tracking-[0.12em] text-[#a8a8a0] hover:text-[#fcf9f3] hover:pl-12 transition-all duration-200 border-b border-[#fcf9f3]/3"
+                              className="block px-10 py-2.5 font-grotesk text-xs uppercase tracking-[0.1em] text-[#a8a8a0] hover:text-[#fcf9f3] hover:pl-12 transition-all duration-200 border-b border-[#fcf9f3]/3"
                             >
                               {child.label}
                             </Link>
@@ -220,7 +230,7 @@ export default function Navbar({ isTransparent = false }) {
                     <Link
                       to={link.href}
                       onClick={closeDrawer}
-                      className="block px-6 py-4 font-unica text-2xl uppercase tracking-tight text-[#fcf9f3] hover:text-[#D4AF37] transition-colors border-b border-[#fcf9f3]/5"
+                      className="block px-6 py-3.5 font-unica text-lg uppercase tracking-tight text-[#fcf9f3] hover:text-[#D4AF37] transition-colors border-b border-[#fcf9f3]/5"
                     >
                       {link.label}
                     </Link>
