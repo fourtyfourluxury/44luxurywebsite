@@ -7,7 +7,7 @@ import ProductCard from '../product/ProductCard';
  * `section` comes from the `homepage_sections` table: { title, product_ids }.
  */
 export default function ProductGrid({ section }) {
-  const { products, collections, _hasHydrated } = useSiteStore();
+  const { products, collections, partnerships, _hasHydrated } = useSiteStore();
 
   if (!_hasHydrated || !section) return null;
 
@@ -19,10 +19,17 @@ export default function ProductGrid({ section }) {
 
   if (displayProducts.length === 0) return null;
 
-  const linkedCollection = section.collection_id
-    ? collections.find(c => c.id === section.collection_id)
-    : null;
-  const viewAllLink = linkedCollection ? `/collections/${linkedCollection.slug}` : '/shop';
+  // "View All" goes to the linked Collection/Partnership's full page when
+  // set, otherwise to this section's own dedicated page (not a generic
+  // /shop fallback) so it only ever shows the products actually curated here.
+  let viewAllLink = `/featured/${section.slug || ''}`;
+  if (section.collection_id) {
+    const linked = collections.find(c => c.id === section.collection_id);
+    if (linked) viewAllLink = `/collections/${linked.slug}`;
+  } else if (section.partnership_id) {
+    const linked = partnerships.find(p => p.id === section.partnership_id);
+    if (linked) viewAllLink = `/partnerships/${linked.slug}`;
+  }
 
   return (
     <section className="py-20 md:py-28 px-5 md:px-8 lg:px-14 max-w-[1440px] mx-auto">

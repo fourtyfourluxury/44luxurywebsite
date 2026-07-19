@@ -22,6 +22,11 @@ export async function getSections() {
   }
 }
 
+const slugify = (str) => (str || '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/(^-|-$)/g, '');
+
 // Create a new empty section, appended to the end of the order
 export async function createSection(title) {
   try {
@@ -32,10 +37,16 @@ export async function createSection(title) {
       .limit(1);
 
     const nextOrder = existing && existing.length > 0 ? existing[0].sort_order + 1 : 0;
+    const baseTitle = title || 'NEW SECTION';
 
     const { data, error } = await supabase
       .from('homepage_sections')
-      .insert({ title: title || 'NEW SECTION', product_ids: [], sort_order: nextOrder })
+      .insert({
+        title: baseTitle,
+        slug: `${slugify(baseTitle)}-${Date.now().toString(36)}`,
+        product_ids: [],
+        sort_order: nextOrder,
+      })
       .select()
       .single();
 
@@ -48,7 +59,7 @@ export async function createSection(title) {
   }
 }
 
-// Update a section's title, product_ids, and/or visibility
+// Update a section's title, product_ids, visibility, links, and/or slug
 export async function updateSection(id, updates) {
   try {
     const dbUpdates = {};
@@ -56,6 +67,8 @@ export async function updateSection(id, updates) {
     if (updates.product_ids !== undefined) dbUpdates.product_ids = updates.product_ids;
     if (updates.visible !== undefined) dbUpdates.visible = updates.visible;
     if (updates.collection_id !== undefined) dbUpdates.collection_id = updates.collection_id;
+    if (updates.partnership_id !== undefined) dbUpdates.partnership_id = updates.partnership_id;
+    if (updates.slug !== undefined) dbUpdates.slug = updates.slug;
 
     const { data, error } = await supabase
       .from('homepage_sections')

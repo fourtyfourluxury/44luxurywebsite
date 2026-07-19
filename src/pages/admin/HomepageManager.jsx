@@ -34,7 +34,7 @@ export default function HomepageManager() {
   const [slides, setSlides] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { products, collections, categoryBanners } = useSiteStore();
+  const { products, collections, partnerships, categoryBanners } = useSiteStore();
 
   const [activeEditor, setActiveEditor] = useState(null);
 
@@ -399,6 +399,7 @@ export default function HomepageManager() {
           sections={sections}
           products={products}
           collections={collections}
+          partnerships={partnerships}
           reload={load}
           onClose={() => setActiveEditor(null)}
         />
@@ -714,7 +715,7 @@ function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onCl
 // Admin CRUD for named, CMS-managed homepage product sections (title + up to
 // 8 products each). List view lets you create/rename/reorder/hide/delete
 // sections; clicking "Edit Products" opens the product picker for that section.
-function HomepageSectionsModal({ sections: initialSections, products, collections, reload, onClose }) {
+function HomepageSectionsModal({ sections: initialSections, products, collections, partnerships, reload, onClose }) {
   const [sections, setSections] = useState(initialSections || []);
   const [editingId, setEditingId] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -761,10 +762,43 @@ function HomepageSectionsModal({ sections: initialSections, products, collection
     else await refresh();
   };
 
-  const handleSetCollection = async (sec, collectionId) => {
-    const { error } = await updateHomepageSection(sec.id, { collection_id: collectionId || null });
+  // value is "none", "collection:<id>", or "partnership:<id>"
+  const handleSetLink = async (sec, value) => {
+    if (value === 'none' || !value) {
+      const { error } = await updateHomepageSection(sec.id, { collection_id: null, partnership_id: null });
+      if (error) toast(error, 'error');
+      else { toast('Unlinked — pick products manually below', 'success'); await refresh(); }
+      return;
+    }
+
+    const [type, id] = value.split(':');
+    let derivedProductIds = [];
+
+    if (type === 'collection') {
+      derivedProductIds = products
+        .filter(p => p.collection_id === id && p.status !== 'DRAFT')
+        .slice(0, 8)
+        .map(p => p.id);
+    } else if (type === 'partnership') {
+      const partnership = partnerships.find(p => p.id === id);
+      derivedProductIds = (partnership?.featured_product_ids || []).slice(0, 8);
+    }
+
+    const { error } = await updateHomepageSection(sec.id, {
+      collection_id: type === 'collection' ? id : null,
+      partnership_id: type === 'partnership' ? id : null,
+      product_ids: derivedProductIds,
+    });
     if (error) toast(error, 'error');
-    else { toast('Linked collection updated', 'success'); await refresh(); }
+    else { toast(`Linked — pulled ${derivedProductIds.length} product${derivedProductIds.length === 1 ? '' : 's'} automatically`, 'success'); await refresh(); }
+  };
+
+  // Re-pulls products from the already-linked collection/partnership — use
+  // after adding new products to that collection/partnership elsewhere.
+  const handleResync = async (sec) => {
+    const value = sec.collection_id ? `collection:${sec.collection_id}` : sec.partnership_id ? `partnership:${sec.partnership_id}` : null;
+    if (!value) return;
+    await handleSetLink(sec, value);
   };
 
   const handleDelete = async (id) => {
@@ -813,15 +847,25 @@ function HomepageSectionsModal({ sections: initialSections, products, collection
       <p className="text-[12px] text-white/55 mb-4 leading-relaxed">
         Create as many named sections as you like. Each holds up to 8 products in a 4×2 grid.
         Rename, reorder, hide, or delete a section at any time — changes appear on the live site instantly.
-        Link a section to a Collection so its "VIEW ALL" button shows every product in that collection,
-        not just the 8 on the homepage tile. Create the collection first in Collections Manager if it doesn't exist yet.
+        Link a section to a Collection or Partnership and its products are pulled in automatically —
+        no need to pick them again — and "VIEW ALL" takes shoppers straight to that collection's or
+        partnership's full page. Leave it unlinked (e.g. for a hand-picked "New Arrivals") and it gets
+        its own simple page instead, showing just the products you picked below.
       </p>
 
       <div className="space-y-3">
         {sections.length === 0 && (
           <p className="text-white/30 text-sm py-4 text-center">No sections yet. Create your first one below.</p>
         )}
-        {sections.map((sec, i) => (
+        {sections.map((sec, i) => {
+          const isLinked = !!(sec.collection_id || sec.partnership_id);
+          const linkValue = sec.collection_id ? `collection:${sec.collection_id}` : sec.partnership_id ? `partnership:${sec.partnership_id}` : 'none';
+          const viewAllHref = sec.collection_id
+            ? `/collections/${collections.find(c => c.id === sec.collection_id)?.slug || ''}`
+            : sec.partnership_id
+            ? `/partnerships/${partnerships.find(p => p.id === sec.partnership_id)?.slug || ''}`
+            : `/featured/${sec.slug || ''}`;
+          return (
           <div key={sec.id} className="bg-[#141410] border border-white/10 rounded-xl p-3">
             <div className="flex items-center gap-3">
               <div className="flex flex-col gap-1 shrink-0">
@@ -870,20 +914,40 @@ function HomepageSectionsModal({ sections: initialSections, products, collection
                     {(sec.product_ids || []).length}/8 products
                     {(sec.product_ids || []).length === 0 && ' — won\'t appear on the homepage until you add at least one'}
                   </span>
+                  {isLinked && <span className="text-[#c9a96e]"> · Auto-synced</span>}
                   {sec.visible === false && <span className="text-white/40"> · Hidden</span>}
                 </p>
                 <div className="flex items-center gap-1.5 mt-2">
-                  <span className="text-[9px] text-white/30 uppercase tracking-wider shrink-0">View All →</span>
+                  <span className="text-[9px] text-white/30 uppercase tracking-wider shrink-0">Link to</span>
                   <select
-                    value={sec.collection_id || ''}
-                    onChange={e => handleSetCollection(sec, e.target.value)}
+                    value={linkValue}
+                    onChange={e => handleSetLink(sec, e.target.value)}
                     className="flex-1 min-w-0 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white/80 outline-none"
                   >
-                    <option value="">/shop (all products)</option>
-                    {(collections || []).map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
+                    <option value="none">None — pick products manually</option>
+                    {(collections || []).length > 0 && (
+                      <optgroup label="Collections">
+                        {collections.map(c => (
+                          <option key={c.id} value={`collection:${c.id}`}>{c.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {(partnerships || []).length > 0 && (
+                      <optgroup label="Partnerships">
+                        {partnerships.map(p => (
+                          <option key={p.id} value={`partnership:${p.id}`}>{p.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
+                  <a
+                    href={viewAllHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[9px] text-white/30 hover:text-white uppercase tracking-wider shrink-0 underline"
+                  >
+                    Preview
+                  </a>
                 </div>
               </div>
 
@@ -895,12 +959,22 @@ function HomepageSectionsModal({ sections: initialSections, products, collection
                 >
                   <div className={`w-4 h-4 rounded-full bg-black transition-transform duration-200 ${sec.visible !== false ? 'translate-x-4' : 'translate-x-0'}`} />
                 </button>
-                <button
-                  onClick={() => setEditingId(sec.id)}
-                  className="px-3 py-1.5 bg-white/5 hover:bg-white/15 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors"
-                >
-                  Edit Products
-                </button>
+                {isLinked ? (
+                  <button
+                    onClick={() => handleResync(sec)}
+                    title="Re-pull products from the linked collection/partnership"
+                    className="px-3 py-1.5 bg-white/5 hover:bg-white/15 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors"
+                  >
+                    Re-sync
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setEditingId(sec.id)}
+                    className="px-3 py-1.5 bg-white/5 hover:bg-white/15 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors"
+                  >
+                    Edit Products
+                  </button>
+                )}
                 <button
                   onClick={() => handleDelete(sec.id)}
                   className="w-8 h-8 rounded-lg flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all"
@@ -910,7 +984,8 @@ function HomepageSectionsModal({ sections: initialSections, products, collection
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-5 pt-4 border-t border-white/5">
