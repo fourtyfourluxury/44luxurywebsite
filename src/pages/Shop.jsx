@@ -74,7 +74,7 @@ export default function Shop() {
     });
   }
 
-  const pageTitle = searchQuery ? `"${searchQuery}"` : 'ALL PRODUCTS';
+  const pageTitle = searchQuery ? searchQuery : 'ALL PRODUCTS';
   const effectiveMax = maxPrice > 0 ? maxPrice : 500000;
   const effectivePriceRange = priceRange[1] === Infinity ? [0, effectiveMax] : priceRange;
 
