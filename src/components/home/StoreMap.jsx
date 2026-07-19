@@ -6,8 +6,8 @@ export default function StoreMap() {
   // CMS values with fallbacks
   const visible = contactMap?.visible !== false;
   const address = contactMap?.address || 'Shop C426, Shariff Plaza, Banex, Wuse 2, Abuja, FCT, Nigeria';
-  const lat = contactMap?.lat ?? 9.0573;
-  const lng = contactMap?.lng ?? 7.4845;
+  const lat = contactMap?.lat ?? 9.0839;
+  const lng = contactMap?.lng ?? 7.4689;
 
   if (!visible) return null;
 

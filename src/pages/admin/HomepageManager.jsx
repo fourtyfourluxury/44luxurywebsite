@@ -312,7 +312,7 @@ export default function HomepageManager() {
                 {config?.sections?.contact_map?.address || 'Shariff Plaza, Banex Wuse 2, Shop C426, Abuja, Nigeria'}
               </p>
               <p className="text-[9px] text-white/20 mt-1 font-mono">
-                lat: {config?.sections?.contact_map?.lat ?? '9.0573'} · lng: {config?.sections?.contact_map?.lng ?? '7.4845'}
+                lat: {config?.sections?.contact_map?.lat ?? '9.0839'} · lng: {config?.sections?.contact_map?.lng ?? '7.4689'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1455,8 +1455,8 @@ function ContactMapEditorModal({ config, onSave, onClose }) {
     sectionTitle:       current.sectionTitle       || 'VISIT OUR STORE',
     sectionDescription: current.sectionDescription || 'Step into the 44 Luxury showroom and experience the collection in person. Our team is on hand for bespoke styling consultations and exclusive in-store drops.',
     address:            current.address            || 'Shop C426, Shariff Plaza, Banex, Wuse 2, Abuja, FCT, Nigeria',
-    lat:                current.lat !== undefined ? current.lat : 9.0573,
-    lng:                current.lng !== undefined ? current.lng : 7.4845,
+    lat:                current.lat !== undefined ? current.lat : 9.0839,
+    lng:                current.lng !== undefined ? current.lng : 7.4689,
     mapsLink:           current.mapsLink           || 'https://maps.google.com/?q=Shop+C426+Shariff+Plaza+Banex+Wuse+2+Abuja',
     hours:              current.hours              || 'Mon–Sat  10am–7pm · Sun  12pm–5pm',
     popupContent:       current.popupContent       || '44 Luxury\nShop C426, Shariff Plaza, Banex, Wuse 2, Abuja',
@@ -1468,8 +1468,8 @@ function ContactMapEditorModal({ config, onSave, onClose }) {
     const lngNum = parseFloat(draft.lng);
     onSave({
       ...draft,
-      lat: isNaN(latNum) ? 9.0573 : latNum,
-      lng: isNaN(lngNum) ? 7.4845 : lngNum
+      lat: isNaN(latNum) ? 9.0839 : latNum,
+      lng: isNaN(lngNum) ? 7.4689 : lngNum
     });
   };
 
@@ -1545,7 +1545,7 @@ function ContactMapEditorModal({ config, onSave, onClose }) {
               value={draft.lat}
               onChange={e => setDraft(d => ({ ...d, lat: e.target.value }))}
               className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors font-mono"
-              placeholder="e.g. 9.0573"
+              placeholder="e.g. 9.0839"
             />
           </div>
           <div>
@@ -1555,7 +1555,7 @@ function ContactMapEditorModal({ config, onSave, onClose }) {
               value={draft.lng}
               onChange={e => setDraft(d => ({ ...d, lng: e.target.value }))}
               className="w-full bg-[#141410] border border-white/10 focus:border-white/30 rounded-xl px-4 py-3 text-[13px] text-white outline-none transition-colors font-mono"
-              placeholder="e.g. 7.4845"
+              placeholder="e.g. 7.4689"
             />
           </div>
         </div>
