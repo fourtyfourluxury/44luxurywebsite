@@ -4,7 +4,7 @@ import { useSiteStore } from '../store/useSiteStore';
 // Category type display order & icons
 const CATEGORY_ORDER = [
   'new-arrivals', 't-shirts', 'polos', 'hoodies-sweatshirts',
-  'tracksuits', 'denim', 'crop-tops', 'tank-tops', 'caps', 'socks', 'accessories',
+  'tracksuits', 'denim', 'skirts', 'crop-tops', 'tank-tops', 'caps', 'socks', 'accessories',
 ];
 
 const CATEGORY_LABELS = {
@@ -14,6 +14,7 @@ const CATEGORY_LABELS = {
   'hoodies-sweatshirts': 'Hoodies & Sweatshirts',
   'tracksuits':          'Tracksuits',
   'denim':               'Denim',
+  'skirts':              'Skirts',
   'crop-tops':           'Crop Tops',
   'tank-tops':           'Tank Tops',
   'caps':                'Caps',

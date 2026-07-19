@@ -817,7 +817,13 @@ function HomepageSectionsModal({ sections: initialSections, products, collection
                     </button>
                   </div>
                 )}
-                <p className="text-[10px] text-white/40 mt-0.5">{(sec.product_ids || []).length}/8 products {sec.visible === false && '· Hidden'}</p>
+                <p className="text-[10px] mt-0.5">
+                  <span className={(sec.product_ids || []).length === 0 ? 'text-amber-400' : 'text-white/40'}>
+                    {(sec.product_ids || []).length}/8 products
+                    {(sec.product_ids || []).length === 0 && ' — won\'t appear on the homepage until you add at least one'}
+                  </span>
+                  {sec.visible === false && <span className="text-white/40"> · Hidden</span>}
+                </p>
                 <div className="flex items-center gap-1.5 mt-2">
                   <span className="text-[9px] text-white/30 uppercase tracking-wider shrink-0">View All →</span>
                   <select

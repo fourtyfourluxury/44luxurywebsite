@@ -99,14 +99,14 @@ export default function CampaignCarousel() {
 
       {/*
         Container sizing — matches YL proportions:
-        ▸ Mobile:  aspect-[4/5], capped at 92svh (nearly full screen)
-        ▸ Desktop: aspect-[4/5], capped at 92dvh
+        ▸ Mobile:  aspect-[4/5], capped at 100svh (full screen)
+        ▸ Desktop: aspect-[4/5], capped at 100dvh
         No horizontal padding — image is fully edge-to-edge.
       */}
       <div
         className="relative w-full overflow-hidden"
         style={{
-          height: 'clamp(420px, calc(100vw / 0.8), 92vh)',
+          height: 'clamp(500px, calc(100vw / 0.8), 100vh)',
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

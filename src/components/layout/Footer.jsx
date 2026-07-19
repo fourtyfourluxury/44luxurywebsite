@@ -23,6 +23,7 @@ const WhatsAppIcon = () => (
 const footerLinks = {
   SHOP: [
     { label: 'All Products', href: '/shop' },
+    { label: 'Collections', href: '/collections' },
     { label: 'Sweatshirts', href: '/category/sweatshirts' },
     { label: 'Caps', href: '/category/caps' },
     { label: 'Polo Shirts', href: '/category/polo-shirts' },

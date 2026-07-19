@@ -71,6 +71,7 @@ export default function Navbar({ isTransparent = false }) {
 
   const DRAWER_LINKS = [
     { label: 'ALL PRODUCTS', href: '/shop' },
+    { label: 'COLLECTIONS', href: '/collections' },
     {
       label: 'SHOP', children: [
         { label: 'Sweatshirts', href: '/category/sweatshirts' },
