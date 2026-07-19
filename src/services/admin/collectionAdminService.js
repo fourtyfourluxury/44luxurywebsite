@@ -126,19 +126,14 @@ export async function updateCollection(collectionId, updates) {
  */
 export async function deleteCollection(collectionId) {
   try {
-    // Check if collection has products
-    const { data: products } = await supabase
+    // Unlink any products from this collection first (instead of blocking
+    // the delete) so removing a collection never gets silently stuck.
+    const { error: unlinkError } = await supabase
       .from('products')
-      .select('id')
-      .eq('collection_id', collectionId)
-      .limit(1);
+      .update({ collection_id: null })
+      .eq('collection_id', collectionId);
 
-    if (products && products.length > 0) {
-      return { 
-        success: false, 
-        error: 'Cannot delete collection with products. Remove products first.' 
-      };
-    }
+    if (unlinkError) throw unlinkError;
 
     // Fetch the collection to get the hero image URL before deleting
     const { data: collection } = await supabase

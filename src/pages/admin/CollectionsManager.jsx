@@ -291,7 +291,7 @@ export default function CollectionsManager() {
               </div>
 
               <Field label="Hero Headline">
-                <Input value={panel.heroHeadline || ''} onChange={e => set('heroHeadline', e.target.value)} placeholder="THE EDIT" />
+                <Input value={panel.heroHeadline || ''} onChange={e => set('heroHeadline', e.target.value)} placeholder="" />
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="CTA Label">

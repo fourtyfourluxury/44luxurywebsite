@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, User, ShoppingBag, Menu, X, ChevronDown } from 'lucide-react';
+import { Search, User, ShoppingBag, Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSiteStore } from '../../store/useSiteStore';
 import { useAuthStore } from '../../store/authStore';
 
@@ -180,11 +180,11 @@ export default function Navbar({ isTransparent = false }) {
         </div>
       </nav>
 
-      {/* ── Left-Side Drawer ────────────────────────────── */}
+      {/* ── Left-Side Drawer (main list + side flyout) ───── */}
       {drawerOpen && (
         <div className="fixed inset-0 z-50 flex">
-          {/* Drawer Panel */}
-          <div className={`w-full max-w-[340px] bg-[#4b0e1e] h-full flex flex-col overflow-y-auto shadow-2xl ${isDrawerClosing ? 'animate-slide-out-left' : 'animate-slide-in-left'}`}>
+          {/* Panel 1: main nav list — hidden on mobile once a flyout is open, since there's no room beside it */}
+          <div className={`${expandedSection ? 'hidden sm:flex' : 'flex'} w-full sm:w-auto sm:max-w-[320px] bg-[#4b0e1e] h-full flex-col overflow-y-auto shadow-2xl shrink-0 ${isDrawerClosing ? 'animate-slide-out-left' : 'animate-slide-in-left'}`}>
             {/* Drawer Header */}
             <div className="flex justify-between items-center px-6 py-6 border-b border-[#fcf9f3]/8">
               <Link to="/" onClick={closeDrawer} className="flex items-center hover:opacity-80 transition-opacity">
@@ -200,32 +200,13 @@ export default function Navbar({ isTransparent = false }) {
               {DRAWER_LINKS.map(link => (
                 <div key={link.label}>
                   {link.children ? (
-                    <>
-                      <button
-                        onClick={() => setExpandedSection(expandedSection === link.label ? null : link.label)}
-                        className="w-full flex items-center justify-between px-6 py-3.5 font-unica text-lg uppercase tracking-tight text-[#fcf9f3] hover:text-[#D4AF37] transition-colors border-b border-[#fcf9f3]/5"
-                      >
-                        {link.label}
-                        <ChevronDown
-                          size={18}
-                          className={`text-[#5f5e5e] transition-transform duration-300 ${expandedSection === link.label ? 'rotate-180' : ''}`}
-                        />
-                      </button>
-                      {expandedSection === link.label && (
-                        <div className="bg-[#2c000b] py-2">
-                          {link.children.map(child => (
-                            <Link
-                              key={child.href}
-                              to={child.href}
-                              onClick={closeDrawer}
-                              className="block px-10 py-2.5 font-grotesk text-xs uppercase tracking-[0.1em] text-[#a8a8a0] hover:text-[#fcf9f3] hover:pl-12 transition-all duration-200 border-b border-[#fcf9f3]/3"
-                            >
-                              {child.label}
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                    </>
+                    <button
+                      onClick={() => setExpandedSection(link.label)}
+                      className={`w-full flex items-center justify-between px-6 py-3.5 font-unica text-lg uppercase tracking-tight transition-colors border-b border-[#fcf9f3]/5 ${expandedSection === link.label ? 'text-[#D4AF37]' : 'text-[#fcf9f3] hover:text-[#D4AF37]'}`}
+                    >
+                      {link.label}
+                      <ChevronRight size={16} className="text-[#5f5e5e]" />
+                    </button>
                   ) : (
                     <Link
                       to={link.href}
@@ -264,9 +245,33 @@ export default function Navbar({ isTransparent = false }) {
             </div>
           </div>
 
-          {/* Backdrop */}
+          {/* Panel 2: side flyout — appears beside panel 1, lists the active section's children */}
+          {expandedSection && (
+            <div className="w-full sm:w-auto sm:max-w-[300px] bg-[#3a000a] h-full flex flex-col overflow-y-auto shadow-2xl shrink-0 animate-slide-in-left">
+              <div className="flex items-center gap-3 px-6 py-6 border-b border-[#fcf9f3]/8">
+                <button onClick={() => setExpandedSection(null)} className="text-[#a8a8a0] hover:text-[#fcf9f3] transition-colors p-1 -ml-1">
+                  <ChevronLeft size={20} />
+                </button>
+                <span className="font-unica text-lg uppercase tracking-tight text-[#fcf9f3]">{expandedSection}</span>
+              </div>
+              <div className="flex-1 py-2 overflow-y-auto">
+                {DRAWER_LINKS.find(l => l.label === expandedSection)?.children.map(child => (
+                  <Link
+                    key={child.href}
+                    to={child.href}
+                    onClick={closeDrawer}
+                    className="block px-6 py-3 font-grotesk text-xs uppercase tracking-[0.1em] text-[#a8a8a0] hover:text-[#fcf9f3] hover:pl-8 transition-all duration-200 border-b border-[#fcf9f3]/3"
+                  >
+                    {child.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Backdrop — strong blur so the page behind reads as a soft blur, not a dark scrim */}
           <div
-            className={`flex-1 bg-black/70 backdrop-blur-sm transition-opacity duration-300 ${isDrawerClosing ? 'opacity-0' : 'opacity-100'}`}
+            className={`flex-1 bg-black/30 backdrop-blur-2xl transition-opacity duration-300 ${isDrawerClosing ? 'opacity-0' : 'opacity-100'}`}
             onClick={closeDrawer}
           />
         </div>

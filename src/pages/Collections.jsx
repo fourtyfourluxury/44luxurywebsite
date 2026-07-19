@@ -93,10 +93,6 @@ export default function Collections() {
     );
   }
 
-  const categoryLabel = collection.category_type
-    ? collection.category_type.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-    : null;
-
   return (
     <div>
       {/* ── Hero Banner ──────────────────────────────── */}
@@ -118,9 +114,6 @@ export default function Collections() {
         </Link>
 
         <div className="absolute inset-0 flex flex-col justify-end px-8 md:px-16 pb-14 max-w-[1440px] mx-auto w-full">
-          <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#fcf9f3]/50 mb-4">
-            {categoryLabel ? `${categoryLabel} · ` : ''}{collectionProducts.length} {collectionProducts.length === 1 ? 'PIECE' : 'PIECES'}
-          </p>
           <h1 className="font-unica text-4xl sm:text-5xl md:text-7xl lg:text-8xl uppercase tracking-tighter leading-[0.9] text-[#fcf9f3] mb-5 break-words">
             {collection.hero_headline || collection.name}
           </h1>
