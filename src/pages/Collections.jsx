@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useSiteStore } from '../store/useSiteStore';
 import ProductCard from '../components/product/ProductCard';
+import FilterBar from '../components/product/FilterBar';
 
 // Inject / update <head> SEO tags
 function useSEO({ title, description, keywords }) {
@@ -31,6 +32,53 @@ export default function Collections() {
     keywords:    collection?.seo_keywords,
   });
 
+  // Filter state
+  const [availability, setAvailability] = useState('all');
+  const [priceRange, setPriceRange] = useState([0, Infinity]);
+
+  // Products explicitly tied to this collection — no gender/category fallback,
+  // so a product only ever shows here because it's actually assigned to it.
+  const collectionProducts = useMemo(() => {
+    if (!collection) return [];
+    return products.filter(p => {
+      if (p.status === 'DRAFT') return false;
+      if (p.collection_id === collection.id)              return true;
+      if (p.collection === collection.slug)               return true;
+      if (p.collections?.includes(collection.id))         return true;
+      if (collection.category_type && p.category_type === collection.category_type) return true;
+      return false;
+    });
+  }, [products, collection]);
+
+  const maxPrice = useMemo(() => {
+    const prices = collectionProducts.map(p => p.price || 0);
+    return prices.length > 0 ? Math.ceil(Math.max(...prices) / 1000) * 1000 : 500000;
+  }, [collectionProducts]);
+
+  useEffect(() => {
+    if (maxPrice > 0 && priceRange[1] === Infinity) {
+      setPriceRange([0, maxPrice]);
+    }
+  }, [maxPrice]);
+
+  const effectiveMax = maxPrice > 0 ? maxPrice : 500000;
+  const effectivePriceRange = priceRange[1] === Infinity ? [0, effectiveMax] : priceRange;
+
+  let filteredProducts = collectionProducts;
+  if (availability === 'in_stock') filteredProducts = filteredProducts.filter(p => (p.stock ?? 1) > 0);
+  if (availability === 'out_of_stock') filteredProducts = filteredProducts.filter(p => (p.stock ?? 1) <= 0);
+  if (effectivePriceRange[1] < effectiveMax || effectivePriceRange[0] > 0) {
+    filteredProducts = filteredProducts.filter(p => {
+      const price = p.price || 0;
+      return price >= effectivePriceRange[0] && price <= effectivePriceRange[1];
+    });
+  }
+
+  const resetFilters = () => {
+    setAvailability('all');
+    setPriceRange([0, effectiveMax]);
+  };
+
   if (!collection) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#fcf9f3]">
@@ -45,31 +93,14 @@ export default function Collections() {
     );
   }
 
-  // Product filtering — match by collection_id, slug, category_type, or fallback to gender category
-  const collectionProducts = products.filter(p => {
-    if (p.status === 'DRAFT') return false;
-    if (p.collection_id === collection.id)              return true;
-    if (p.collection === collection.slug)               return true;
-    if (p.collections?.includes(collection.id))         return true;
-    if (collection.category_type && p.category_type === collection.category_type) return true;
-    return false;
-  });
-
-  const displayProducts = collectionProducts.length > 0
-    ? collectionProducts
-    : products.filter(p =>
-        p.status !== 'DRAFT' &&
-        (p.category === collection.category || collection.category === 'unisex')
-      );
-
   const categoryLabel = collection.category_type
     ? collection.category_type.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-    : collection.category?.toUpperCase();
+    : null;
 
   return (
     <div>
       {/* ── Hero Banner ──────────────────────────────── */}
-      <div className="relative h-[70vh] min-h-[480px] max-h-[720px] overflow-hidden bg-[#1c1c18]">
+      <div className="relative h-[60vh] min-h-[420px] max-h-[620px] overflow-hidden bg-[#1c1c18]">
         {collection.hero_image && (
           <img
             src={collection.hero_image}
@@ -86,11 +117,11 @@ export default function Collections() {
           <ArrowLeft size={14} /> ALL COLLECTIONS
         </Link>
 
-        <div className="absolute inset-0 flex flex-col justify-end px-8 md:px-16 pb-16 max-w-[1440px] mx-auto w-full">
+        <div className="absolute inset-0 flex flex-col justify-end px-8 md:px-16 pb-14 max-w-[1440px] mx-auto w-full">
           <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#fcf9f3]/50 mb-4">
-            {categoryLabel} · {displayProducts.length} PIECES
+            {categoryLabel ? `${categoryLabel} · ` : ''}{collectionProducts.length} {collectionProducts.length === 1 ? 'PIECE' : 'PIECES'}
           </p>
-          <h1 className="font-unica text-4xl sm:text-6xl md:text-[9rem] lg:text-[11rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3] mb-6 break-words">
+          <h1 className="font-unica text-4xl sm:text-5xl md:text-7xl lg:text-8xl uppercase tracking-tighter leading-[0.9] text-[#fcf9f3] mb-5 break-words">
             {collection.hero_headline || collection.name}
           </h1>
           {(collection.hero_subheadline || collection.description) && (
@@ -101,21 +132,16 @@ export default function Collections() {
         </div>
       </div>
 
-      {/* ── Description strip (if description and no hero image text) ─── */}
-      {collection.description && collection.hero_image && (
+      {/* ── CTA strip (only when a custom CTA is set) ─── */}
+      {collection.cta_label && collection.cta_link && (
         <div className="bg-[#f7f4ed] border-b border-[#1c1c18]/8">
-          <div className="max-w-[1440px] mx-auto px-8 md:px-16 py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <p className="font-plex text-sm text-[#5f5e5e] max-w-xl leading-relaxed">
-              {collection.description}
-            </p>
-            {collection.cta_label && collection.cta_link && (
-              <Link
-                to={collection.cta_link}
-                className="shrink-0 font-grotesk font-bold text-xs uppercase tracking-widest text-[#1c1c18] border-b border-[#1c1c18] pb-0.5 hover:text-[#4b0e1e] hover:border-[#4b0e1e] transition-colors"
-              >
-                {collection.cta_label}
-              </Link>
-            )}
+          <div className="max-w-[1440px] mx-auto px-8 md:px-16 py-6 flex justify-end">
+            <Link
+              to={collection.cta_link}
+              className="font-grotesk font-bold text-xs uppercase tracking-widest text-[#1c1c18] border-b border-[#1c1c18] pb-0.5 hover:text-[#4b0e1e] hover:border-[#4b0e1e] transition-colors"
+            >
+              {collection.cta_label}
+            </Link>
           </div>
         </div>
       )}
@@ -135,16 +161,14 @@ export default function Collections() {
 
       {/* ── Products Grid ─────────────────────────────── */}
       <div className="max-w-[1440px] mx-auto px-6 py-16">
-        <div className="flex items-end justify-between mb-12">
-          <h2 className="font-unica text-4xl md:text-6xl uppercase tracking-tighter text-[#1c1c18] leading-none">
-            THE EDIT
-          </h2>
-          <span className="font-plex text-sm text-[#5f5e5e]">
-            {displayProducts.length} {displayProducts.length === 1 ? 'piece' : 'pieces'}
-          </span>
-        </div>
+        <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#a8a8a0] mb-2">
+          THE EDIT
+        </p>
+        <h2 className="font-unica text-3xl md:text-4xl uppercase tracking-tighter text-[#1c1c18] leading-none mb-8">
+          {collection.name}
+        </h2>
 
-        {displayProducts.length === 0 ? (
+        {collectionProducts.length === 0 ? (
           <div className="py-32 text-center">
             <p className="font-unica text-5xl uppercase tracking-tighter text-[#5f5e5e]/40 mb-8">
               COMING SOON
@@ -154,38 +178,50 @@ export default function Collections() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-12">
-            {displayProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          <>
+            <FilterBar
+              total={filteredProducts.length}
+              availability={availability}
+              setAvailability={setAvailability}
+              priceRange={effectivePriceRange}
+              setPriceRange={setPriceRange}
+              maxPrice={effectiveMax}
+              onReset={resetFilters}
+            />
+
+            {filteredProducts.length === 0 ? (
+              <div className="py-24 text-center">
+                <p className="font-unica text-4xl uppercase tracking-tighter text-[#5f5e5e] mb-6">NO PRODUCTS FOUND</p>
+                <button onClick={resetFilters} className="font-grotesk font-bold text-xs uppercase tracking-widest text-[#1c1c18] border-b border-[#1c1c18] pb-0.5">
+                  CLEAR FILTERS
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-12">
+                {filteredProducts.map(product => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* ── Related Collections ───────────────────────── */}
-
-      {/* ── Newsletter Strip ──────────────────────────── */}
-      <div className="bg-[#4b0e1e] py-20 px-6">
-        <div className="max-w-[640px] mx-auto text-center">
-          <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.2em] text-[#fcf9f3]/50 mb-4">
-            THE COLLECTIVE
-          </p>
-          <h3 className="font-unica text-4xl md:text-5xl uppercase tracking-tighter text-[#fcf9f3] mb-6">
-            GET EARLY ACCESS
-          </h3>
-          <form className="flex gap-0 max-w-sm mx-auto">
-            <input
-              type="email"
-              placeholder="YOUR EMAIL"
-              className="flex-1 bg-[#fcf9f3]/10 border border-[#fcf9f3]/20 text-[#fcf9f3] font-plex text-sm px-4 py-3.5 outline-none placeholder:text-[#fcf9f3]/40 focus:border-[#fcf9f3]/50 transition-colors"
-            />
-            <button
-              type="submit"
-              className="bg-[#D4AF37] text-[#1c1c18] font-grotesk font-bold uppercase tracking-widest text-xs px-6 py-3.5 hover:bg-[#c9a02d] transition-colors shrink-0"
-            >
-              JOIN
-            </button>
-          </form>
+      {/* ── Closing nav strip ─────────────────────────── */}
+      <div className="border-t border-[#1c1c18]/10 py-16 px-6 text-center">
+        <div className="flex flex-wrap items-center justify-center gap-6">
+          <Link
+            to="/collections"
+            className="font-grotesk font-bold text-xs uppercase tracking-widest text-[#1c1c18] border-b border-[#1c1c18] pb-0.5 hover:text-[#4b0e1e] hover:border-[#4b0e1e] transition-colors"
+          >
+            BROWSE ALL COLLECTIONS
+          </Link>
+          <Link
+            to="/shop"
+            className="font-grotesk font-bold text-xs uppercase tracking-widest text-[#5f5e5e] border-b border-[#5f5e5e]/40 pb-0.5 hover:text-[#1c1c18] hover:border-[#1c1c18] transition-colors"
+          >
+            SHOP ALL PRODUCTS
+          </Link>
         </div>
       </div>
     </div>

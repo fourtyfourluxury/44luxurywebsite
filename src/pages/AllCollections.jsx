@@ -46,15 +46,9 @@ export default function AllCollections() {
       {/* ── Hero Banner ─────────────────────────── */}
       <div className="bg-[#1c1c18] py-24 px-6">
         <div className="max-w-[1440px] mx-auto">
-          <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#fcf9f3]/40 mb-3">
-            CURATED EDITS · {active.length} COLLECTIONS
-          </p>
           <h1 className="font-unica text-7xl md:text-[9rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3]">
             THE COLLECTIONS
           </h1>
-          <p className="font-plex text-base text-[#fcf9f3]/60 max-w-lg mt-4 leading-relaxed">
-            Explore our curated categories — designed with purpose, crafted without compromise.
-          </p>
         </div>
       </div>
 
