@@ -8,49 +8,41 @@ import FilterBar from '../components/product/FilterBar';
 const CATEGORY_META = {
   sweatshirts: {
     title: 'SWEATSHIRTS',
-    subtitle: 'Premium heavyweight comfort, refined to perfection.',
     keywords: ['sweatshirt', 'hoodie', 'crewneck', 'sweater', 'fleece'],
     bannerImage: '/banner-hoodies-sweatshirts.png',
   },
   caps: {
     title: 'CAPS',
-    subtitle: 'Structured silhouettes. Uncompromising finish.',
     keywords: ['cap', 'hat', 'snapback', 'fitted', 'beanie'],
     bannerImage: null,
   },
   'polo-shirts': {
     title: 'POLO SHIRTS',
-    subtitle: 'Elevated essentials built for the discerning.',
     keywords: ['polo', 'polo shirt'],
     bannerImage: '/banner-polos.png',
   },
   'tank-tops': {
     title: 'TANK TOPS',
-    subtitle: 'Minimal form. Maximum impact.',
     keywords: ['tank', 'tank top', 'vest', 'sleeveless'],
     bannerImage: null,
   },
   skirts: {
     title: 'SKIRTS',
-    subtitle: 'Tailored silhouettes with an edge.',
     keywords: ['skirt'],
     bannerImage: null,
   },
   'crop-tops': {
     title: 'CROP TOPS',
-    subtitle: 'Bold cuts, made for the unapologetic.',
     keywords: ['crop', 'crop top'],
     bannerImage: null,
   },
   socks: {
     title: 'SOCKS',
-    subtitle: 'Small detail, big statement.',
     keywords: ['sock', 'socks'],
     bannerImage: null,
   },
   denim: {
     title: 'DENIM',
-    subtitle: 'Raw African luxury in every stitch.',
     keywords: ['denim', 'jean', 'jeans'],
     bannerImage: null,
   },
@@ -58,8 +50,9 @@ const CATEGORY_META = {
 
 // ── Category Page ─────────────────────────────────────────────────────────────
 export default function CategoryPage({ category }) {
-  const { products, _hasHydrated } = useSiteStore();
-  const meta = CATEGORY_META[category] || { title: category.toUpperCase(), subtitle: '', keywords: [category], bannerImage: null };
+  const { products, _hasHydrated, categoryBanners } = useSiteStore();
+  const meta = CATEGORY_META[category] || { title: category.toUpperCase(), keywords: [category], bannerImage: null };
+  const bannerImage = categoryBanners?.[category] ?? meta.bannerImage;
 
   // Filter state
   const [availability, setAvailability] = useState('all');
@@ -110,29 +103,21 @@ export default function CategoryPage({ category }) {
     <div className="min-h-screen bg-[#fcf9f3]">
       {/* ── Dark hero banner ─────────────────────────────── */}
       <div
-        className="relative bg-[#1c1c18] py-24 px-6 overflow-hidden"
-        style={meta.bannerImage ? {
-          backgroundImage: `url(${meta.bannerImage})`,
+        className="relative bg-[#1c1c18] py-12 px-6 overflow-hidden"
+        style={bannerImage ? {
+          backgroundImage: `url(${bannerImage})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         } : {}}
       >
         {/* Overlay so text stays readable over banner images */}
-        {meta.bannerImage && (
+        {bannerImage && (
           <div className="absolute inset-0 bg-[#1c1c18]/65" />
         )}
         <div className="relative max-w-[1440px] mx-auto">
-          <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#fcf9f3]/40 mb-3">
-            SHOP / {meta.title}
-          </p>
-          <h1 className="font-unica text-4xl sm:text-6xl md:text-[9rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3] break-words">
+          <h1 className="font-unica text-3xl sm:text-4xl md:text-6xl uppercase tracking-tighter leading-[0.9] text-[#fcf9f3] break-words">
             {meta.title}
           </h1>
-          {meta.subtitle && (
-            <p className="font-plex text-base text-[#fcf9f3]/55 max-w-md mt-4 leading-relaxed">
-              {meta.subtitle}
-            </p>
-          )}
         </div>
       </div>
 

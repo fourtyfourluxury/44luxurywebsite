@@ -86,12 +86,9 @@ export default function Shop() {
   return (
     <div className="min-h-screen bg-[#fcf9f3]">
       {/* ── Dark hero header ─────────────────────────────── */}
-      <div className="bg-[#1c1c18] py-20 px-6">
+      <div className="bg-[#1c1c18] py-12 px-6">
         <div className="max-w-[1440px] mx-auto">
-          <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.25em] text-[#fcf9f3]/40 mb-3">
-            SHOP
-          </p>
-          <h1 className="font-unica text-5xl sm:text-7xl md:text-[9rem] uppercase tracking-tighter leading-[0.88] text-[#fcf9f3] break-words">
+          <h1 className="font-unica text-3xl sm:text-4xl md:text-6xl uppercase tracking-tighter leading-[0.9] text-[#fcf9f3] break-words">
             {pageTitle}
           </h1>
         </div>

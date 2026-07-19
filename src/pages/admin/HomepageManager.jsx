@@ -17,12 +17,24 @@ import { useSiteStore } from '../../store/useSiteStore';
 
 const isVideo = (name = '') => /\.(mp4|webm|mov)$/i.test(name) || name.includes('/video/');
 
+// Matches the slugs/titles in src/pages/CategoryPage.jsx's CATEGORY_META
+const CATEGORY_BANNER_SLUGS = [
+  { slug: 'sweatshirts', label: 'Sweatshirts' },
+  { slug: 'caps', label: 'Caps' },
+  { slug: 'polo-shirts', label: 'Polo Shirts' },
+  { slug: 'tank-tops', label: 'Tank Tops' },
+  { slug: 'skirts', label: 'Skirts' },
+  { slug: 'crop-tops', label: 'Crop Tops' },
+  { slug: 'socks', label: 'Socks' },
+  { slug: 'denim', label: 'Denim' },
+];
+
 export default function HomepageManager() {
   const [config, setConfig] = useState(null);
   const [slides, setSlides] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { products, collections } = useSiteStore();
+  const { products, collections, categoryBanners } = useSiteStore();
 
   const [activeEditor, setActiveEditor] = useState(null);
 
@@ -211,6 +223,35 @@ export default function HomepageManager() {
           </div>
         </div>
 
+        {/* ── Category Page Banners — hero images for /category/:slug pages ── */}
+        <div
+          onClick={() => setActiveEditor('category_banners')}
+          className="relative w-full py-10 bg-[#0d0d0a] cursor-pointer group flex flex-col items-center border-b border-white/10"
+        >
+          <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.02] transition-colors" />
+          <div className="w-full px-8 mb-5 text-center">
+            <span className="text-[9px] bg-black/60 text-white/60 font-bold uppercase tracking-widest px-3 py-1.5">
+              CATEGORY PAGE BANNERS
+            </span>
+            <p className="text-[10px] text-white/30 mt-2">Hero image shown at the top of each /category/:slug page (Caps, Denim, Skirts, etc.)</p>
+          </div>
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-2 px-8 w-full opacity-60 group-hover:opacity-30 transition-opacity">
+            {CATEGORY_BANNER_SLUGS.map(({ slug, label }) => (
+              <div key={slug} className="aspect-square bg-white/5 border border-white/10 flex items-center justify-end relative overflow-hidden">
+                {categoryBanners?.[slug] && (
+                  <img src={categoryBanners[slug]} className="absolute inset-0 w-full h-full object-cover" alt="" />
+                )}
+                <span className="relative z-10 w-full text-center text-[7px] font-bold text-white/60 uppercase tracking-wider bg-black/50 py-0.5">{label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity translate-y-4 group-hover:translate-y-0 duration-300 pointer-events-none">
+            <button className="bg-white text-black px-6 py-2.5 font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl pointer-events-auto">
+              <Edit2 size={14} /> Edit Category Page Banners
+            </button>
+          </div>
+        </div>
+
         {/* ── Section 4: CONTACT PAGE BANNER ── */}
         <div
           onClick={() => setActiveEditor('contact_hero')}
@@ -366,6 +407,13 @@ export default function HomepageManager() {
         <CategoriesEditorModal
           config={config}
           onSave={(data) => saveConfig('categories', data)}
+          onClose={() => setActiveEditor(null)}
+        />
+      )}
+      {activeEditor === 'category_banners' && (
+        <CategoryBannersEditorModal
+          config={config}
+          onSave={(data) => saveConfig('category_banners', data)}
           onClose={() => setActiveEditor(null)}
         />
       )}
@@ -1303,6 +1351,109 @@ function CategoriesEditorModal({ config, onSave, onClose }) {
             </button>
           </div>
         )}
+      </div>
+    </ModalWrapper>
+  );
+}
+
+// ── Category Page Banners Editor Modal ─────────────────────────────────────────
+function CategoryBannersEditorModal({ config, onSave, onClose }) {
+  const initial = config?.sections?.category_banners || config?.category_banners || {};
+  const [banners, setBanners] = useState({ ...initial });
+  const [uploadingSlug, setUploadingSlug] = useState(null);
+  const fileRef = useRef();
+  const [targetSlug, setTargetSlug] = useState(null);
+
+  const handleUploadImage = async (files) => {
+    if (!files?.length || !targetSlug) return;
+    setUploadingSlug(targetSlug);
+    toast('Compressing and uploading banner image...', 'info');
+
+    try {
+      const compressed = await compressImage(files[0], 1600, 0.8);
+
+      const oldUrl = banners[targetSlug];
+      if (oldUrl && oldUrl.includes('/storage/v1/object/public/')) {
+        await deleteFileByUrl(oldUrl);
+      }
+
+      const { url } = await uploadFile(compressed, { bucket: BUCKETS.HOMEPAGE, folder: 'homepage/category-banners' });
+      if (url) {
+        setBanners(prev => ({ ...prev, [targetSlug]: url }));
+        toast('Banner uploaded successfully!', 'success');
+      }
+    } catch (err) {
+      toast('Upload failed.', 'error');
+    } finally {
+      setUploadingSlug(null);
+    }
+  };
+
+  const handleClearImage = async (slug) => {
+    const oldUrl = banners[slug];
+    if (oldUrl && oldUrl.includes('/storage/v1/object/public/')) {
+      await deleteFileByUrl(oldUrl);
+    }
+    setBanners(prev => {
+      const next = { ...prev };
+      delete next[slug];
+      return next;
+    });
+    toast('Banner cleared.', 'info');
+  };
+
+  const handleSave = () => onSave(banners);
+
+  return (
+    <ModalWrapper title="Edit Category Page Banners" onClose={onClose}>
+      <p className="text-[12px] text-white/55 mb-4 font-grotesk tracking-wide leading-relaxed">
+        Upload a hero image for each category page (shown behind the title at the top of /category/:slug).
+        Leave one blank to keep that page's plain dark background.
+      </p>
+      <div className="space-y-3">
+        {CATEGORY_BANNER_SLUGS.map(({ slug, label }) => (
+          <div key={slug} className="flex items-center gap-4 bg-[#141410] border border-white/10 p-3 rounded-xl">
+            <div
+              onClick={() => { setTargetSlug(slug); setTimeout(() => fileRef.current?.click(), 0); }}
+              className="w-16 h-16 bg-white/5 border border-white/10 overflow-hidden relative flex items-center justify-center shrink-0 cursor-pointer hover:border-white/30 transition-colors"
+            >
+              {uploadingSlug === slug ? (
+                <Loader2 size={16} className="text-white/50 animate-spin" />
+              ) : banners[slug] ? (
+                <img src={banners[slug]} className="w-full h-full object-cover" alt="" />
+              ) : (
+                <Upload size={16} className="text-white/20" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-bold text-white truncate">{label}</p>
+              <p className="text-[10px] text-white/40 mt-1 truncate">{banners[slug] ? 'Custom banner set' : 'No banner — plain dark background'}</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => { setTargetSlug(slug); setTimeout(() => fileRef.current?.click(), 0); }}
+                className="px-3 py-1.5 bg-white/5 hover:bg-white/15 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors"
+              >
+                {banners[slug] ? 'Change' : 'Upload'}
+              </button>
+              {banners[slug] && (
+                <button
+                  onClick={() => handleClearImage(slug)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => handleUploadImage(e.target.files)} />
+
+      <div className="flex gap-3 pt-5 mt-2 border-t border-white/5">
+        <button onClick={onClose} className="flex-1 py-3 border border-white/10 rounded-xl text-[12px] font-semibold text-white/60 hover:text-white transition-colors">Cancel</button>
+        <button onClick={handleSave} className="flex-1 py-3 bg-white text-black rounded-xl text-[12px] font-bold hover:bg-white/90 transition-colors">Save Banners</button>
       </div>
     </ModalWrapper>
   );

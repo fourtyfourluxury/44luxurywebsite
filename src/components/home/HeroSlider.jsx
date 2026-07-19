@@ -99,14 +99,17 @@ export default function CampaignCarousel() {
 
       {/*
         Container sizing — matches YL proportions:
-        ▸ Mobile:  aspect-[4/5], capped at 100svh (full screen)
-        ▸ Desktop: aspect-[4/5], capped at 100dvh
-        No horizontal padding — image is fully edge-to-edge.
+        ▸ Mobile:  aspect-[4/5] (calc(100vw/0.8) stays well under the cap)
+        ▸ Desktop: same 4:5-driven height, capped at 1400px instead of 100vh —
+          100vh was cropping heavily into portrait campaign photos on wide/
+          short screens (object-cover has to crop a lot to fill a box far
+          wider than the image's native 4:5 ratio). 1400px shows much more
+          of the image while still avoiding the original unbounded-height bug.
       */}
       <div
         className="relative w-full overflow-hidden"
         style={{
-          height: 'clamp(500px, calc(100vw / 0.8), 100vh)',
+          height: 'clamp(500px, calc(100vw / 0.8), 1400px)',
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

@@ -112,6 +112,9 @@ export const useSiteStore = create(
           image: '',
         },
       ],
+      // Hero banner images shown on each /category/:slug page, keyed by slug
+      // (e.g. "caps", "tank-tops"). Admin-editable — see HomepageManager.
+      categoryBanners: {},
 
       // ─── Orders (will be fetched per user) ──────────────────
       orders: [],
@@ -214,6 +217,7 @@ export const useSiteStore = create(
             contactMap: homepageConfig?.sections?.contact_map || state.contactMap,
             faqHero: homepageConfig?.sections?.faq_hero || state.faqHero,
             categories: homepageConfig?.sections?.categories || state.categories,
+            categoryBanners: homepageConfig?.sections?.category_banners || state.categoryBanners,
             loading: false,
             initialized: true,
             error: null,
@@ -270,8 +274,9 @@ export const useSiteStore = create(
               contactMap: homepageConfig.sections?.contact_map || current.contactMap,
               faqHero: homepageConfig.sections?.faq_hero || current.faqHero,
               categories: homepageConfig.sections?.categories || current.categories,
+              categoryBanners: homepageConfig.sections?.category_banners || current.categoryBanners,
             });
-            
+
             console.log('✅ Homepage data refreshed successfully');
           }
         } catch (error) {
@@ -300,6 +305,7 @@ export const useSiteStore = create(
             contactMap: config.sections?.contact_map || current.contactMap,
             faqHero: config.sections?.faq_hero || current.faqHero,
             categories: config.sections?.categories || current.categories,
+            categoryBanners: config.sections?.category_banners || current.categoryBanners,
           });
         });
 
