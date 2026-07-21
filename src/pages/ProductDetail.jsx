@@ -193,7 +193,9 @@ export default function ProductDetail() {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
                   <p className={`font-grotesk font-bold text-[10px] uppercase tracking-widest ${sizeError ? 'text-red-600' : 'text-[#1c1c18]'}`}>
-                    {sizeError ? 'PLEASE SELECT A SIZE' : 'Select Size'}
+                    {sizeError
+                      ? (product.subcategory === 'Footwear' ? 'PLEASE SELECT A SHOE SIZE' : 'PLEASE SELECT A SIZE')
+                      : (product.subcategory === 'Footwear' ? 'Select Shoe Size' : 'Select Size')}
                   </p>
                 </div>
                 <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
