@@ -71,6 +71,15 @@ export default function ProductEditor({ product, onClose, onSave }) {
 
   const videoInputRef = useRef();
 
+  // Clothing sizes (XS-XXXL) and shoe sizes (36-46) are two unrelated value
+  // sets. If a product switches category — e.g. was tagged as a T-shirt
+  // with "XL" selected, then changed to Footwear — "XL" has no button to
+  // un-select in the shoe-size picker and would otherwise linger in
+  // form.sizes forever, showing up alongside the real shoe size. Whenever
+  // the category flips in/out of Footwear, strip out sizes that don't
+  // belong to the newly-active size system.
+  const isFootwearCategory = (subcategory) => subcategory === 'Footwear';
+
   const [form, setForm] = useState({
     name: '', sku: '', category: 'unisex', collection_id: '',
     subcategory: '', season: '',
@@ -114,6 +123,18 @@ export default function ProductEditor({ product, onClose, onSave }) {
 
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); setErrors(p => ({ ...p, [k]: null })); };
   const toggle = (k, val, arr) => set(k, arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]);
+
+  // Prune sizes that don't belong to the currently-active size system whenever
+  // the category changes — covers both switching category in the UI and
+  // loading an existing product whose sizes array already has a leftover
+  // value from before it was tagged Footwear.
+  useEffect(() => {
+    const validSizes = isFootwearCategory(form.subcategory) ? SHOE_SIZES : SIZES;
+    setForm(p => {
+      const pruned = p.sizes.filter(s => validSizes.includes(s));
+      return pruned.length === p.sizes.length ? p : { ...p, sizes: pruned };
+    });
+  }, [form.subcategory]);
 
   const handleImageUpload = async (files) => {
     if (!files?.length) return;
