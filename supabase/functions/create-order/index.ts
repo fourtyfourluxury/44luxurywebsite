@@ -199,6 +199,7 @@ serve(async (req) => {
         body: JSON.stringify({
           email: customer.email,
           amount: Math.round(total * 100), // Paystack expects kobo
+          currency: 'NGN',
           reference: orderNumber,
           callback_url: callback_url || undefined,
           metadata: { order_id: order.id, order_number: orderNumber },
@@ -208,7 +209,7 @@ serve(async (req) => {
       const initJson = await initRes.json();
 
       if (!initRes.ok || !initJson?.status) {
-        console.error('Paystack initialize failed:', initJson);
+        console.error('Paystack initialize failed:', initRes.status, JSON.stringify(initJson));
         await supabaseClient.from('orders').delete().eq('id', order.id);
         return new Response(
           JSON.stringify({ error: initJson?.message || 'Failed to initialize payment' }),
