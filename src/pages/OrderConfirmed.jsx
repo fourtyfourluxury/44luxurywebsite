@@ -1,15 +1,82 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CheckCircle, Package, ArrowRight, Clock, Shield } from 'lucide-react';
+import { CheckCircle, Package, ArrowRight, Clock, Shield, XCircle } from 'lucide-react';
 import { useSiteStore } from '../store/useSiteStore';
+import { supabase } from '../lib/supabase';
 
 export default function OrderConfirmed() {
   const [searchParams] = useSearchParams();
   const { clearCart } = useSiteStore();
-  const orderId = searchParams.get('id') || `#LUX-${Math.floor(Math.random() * 8999 + 1000)}`;
   const isCrypto = searchParams.get('method') === 'crypto';
+  // Paystack appends this to whatever callback_url we gave it at
+  // initialize time — its presence means we just came back from a Paystack
+  // checkout and still need to confirm the charge actually succeeded.
+  const paystackReference = searchParams.get('reference') || searchParams.get('trxref');
 
-  useEffect(() => { clearCart(); }, [clearCart]);
+  const [verifyState, setVerifyState] = useState(paystackReference ? 'verifying' : 'skip');
+  const [orderId, setOrderId] = useState(searchParams.get('id') || paystackReference || `#LUX-${Math.floor(Math.random() * 8999 + 1000)}`);
+
+  useEffect(() => {
+    if (!paystackReference) {
+      clearCart();
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.functions.invoke('verify-payment', {
+        body: { reference: paystackReference },
+      });
+      if (cancelled) return;
+      if (error || !data?.success) {
+        setVerifyState('failed');
+        return;
+      }
+      setOrderId(data.order?.order_number || paystackReference);
+      setVerifyState('confirmed');
+      clearCart();
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paystackReference]);
+
+  if (verifyState === 'verifying') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-[#fcf9f3]">
+        <div className="w-20 h-20 flex items-center justify-center mb-8 bg-[#1c1c18]">
+          <Clock size={36} className="text-[#D4AF37] animate-pulse" />
+        </div>
+        <p className="font-grotesk font-semibold text-xs uppercase tracking-[0.2em] text-[#5f5e5e] mb-3">Confirming Payment</p>
+        <h1 className="font-unica text-5xl md:text-7xl uppercase tracking-tighter text-[#1c1c18] leading-none mb-4">ONE MOMENT</h1>
+        <p className="font-plex text-base text-[#5f5e5e] max-w-md">We're confirming your payment with Paystack. This only takes a second.</p>
+      </div>
+    );
+  }
+
+  if (verifyState === 'failed') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-[#fcf9f3]">
+        <div className="w-20 h-20 flex items-center justify-center mb-8 bg-[#1c1c18]">
+          <XCircle size={36} className="text-[#D4AF37]" />
+        </div>
+        <p className="font-grotesk font-semibold text-xs uppercase tracking-[0.2em] text-[#5f5e5e] mb-3">Payment Not Confirmed</p>
+        <h1 className="font-unica text-5xl md:text-7xl uppercase tracking-tighter text-[#1c1c18] leading-none mb-4">SOMETHING WENT WRONG</h1>
+        <p className="font-plex text-base text-[#5f5e5e] max-w-md mb-2">
+          We couldn't confirm your payment. Your card has not been charged, or the charge is still pending — please check before trying again.
+        </p>
+        <p className="font-grotesk font-bold text-sm text-[#1c1c18] mb-10">Reference {orderId}</p>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Link to="/checkout" className="flex items-center gap-2 bg-[#1c1c18] text-[#fcf9f3] font-grotesk font-bold uppercase tracking-widest text-xs px-10 py-4 hover:bg-[#4b0e1e] transition-colors">
+            TRY AGAIN
+          </Link>
+          <Link to="/shop" className="flex items-center gap-2 border border-[#1c1c18] text-[#1c1c18] font-grotesk font-bold uppercase tracking-widest text-xs px-10 py-4 hover:bg-[#1c1c18] hover:text-[#fcf9f3] transition-colors">
+            CONTINUE SHOPPING <ArrowRight size={14} />
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-[#fcf9f3]">

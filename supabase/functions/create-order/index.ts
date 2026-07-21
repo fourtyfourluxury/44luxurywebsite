@@ -1,10 +1,14 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { finalizeApprovedOrder } from '../_shared/finalizeOrder.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const FREE_SHIPPING_THRESHOLD = 150000;
+const FLAT_SHIPPING_COST = 5000;
 
 interface OrderItem {
   product_id: string;
@@ -29,6 +33,9 @@ interface OrderRequest {
   items: OrderItem[];
   payment_method: string;
   user_id?: string;
+  delivery_method?: 'ship' | 'pickup';
+  callback_url?: string;
+  crypto_details?: unknown;
 }
 
 serve(async (req) => {
@@ -45,7 +52,7 @@ serve(async (req) => {
     );
 
     const orderRequest: OrderRequest = await req.json();
-    const { customer, items, payment_method, user_id } = orderRequest;
+    const { customer, items, payment_method, user_id, delivery_method, callback_url } = orderRequest;
 
     // Validate input
     if (!customer.name || !customer.email || !customer.address) {
@@ -62,11 +69,14 @@ serve(async (req) => {
       );
     }
 
-    // Validate all products exist and have sufficient stock
+    // Validate all products exist, have sufficient stock, and re-price each
+    // line server-side — never trust the price a client sends, only the
+    // qty/size/color selection.
+    const verifiedItems: OrderItem[] = [];
     for (const item of items) {
       const { data: product, error } = await supabaseClient
         .from('products')
-        .select('id, stock, price')
+        .select('id, name, stock, price')
         .eq('id', item.product_id)
         .single();
 
@@ -83,11 +93,16 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      verifiedItems.push({ ...item, price: product.price });
     }
 
     // Calculate total (server-side verification)
-    const total = items.reduce((sum, item) => sum + (item.price * item.qty), 0);
-    const shipping_cost = 0; // TODO: Calculate based on location
+    const subtotal = verifiedItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const shipping_cost = delivery_method === 'pickup'
+      ? 0
+      : (subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_COST);
+    const total = subtotal + shipping_cost;
 
     // Generate order number
     const { data: lastOrder } = await supabaseClient
@@ -103,7 +118,13 @@ serve(async (req) => {
       orderNumber = `LUX-${String(lastNum + 1).padStart(4, '0')}`;
     }
 
-    // Create order
+    const isPaystack = payment_method === 'paystack';
+
+    // Create order. Paystack orders start PENDING and are only finalized
+    // (stock decremented + confirmation email sent) once the payment is
+    // actually verified — see verify-payment / paystack-webhook. Other
+    // payment methods (crypto) keep the existing immediate-finalize behavior
+    // since there's no automated verification wired up for them yet.
     const { data: order, error: orderError } = await supabaseClient
       .from('orders')
       .insert({
@@ -120,6 +141,7 @@ serve(async (req) => {
         shipping_cost,
         status: 'ORDERED',
         payment_method,
+        payment_status: 'PENDING',
       })
       .select()
       .single();
@@ -133,7 +155,7 @@ serve(async (req) => {
     }
 
     // Create order items
-    const orderItems = items.map(item => ({
+    const orderItems = verifiedItems.map(item => ({
       order_id: order.id,
       product_id: item.product_id,
       name: item.name,
@@ -158,18 +180,55 @@ serve(async (req) => {
       );
     }
 
-    // Decrement stock for each product
-    for (const item of items) {
-      const { error: stockError } = await supabaseClient.rpc('decrement_product_stock', {
-        product_id: item.product_id,
-        quantity: item.qty,
+    if (isPaystack) {
+      const PAYSTACK_SECRET_KEY = Deno.env.get('PAYSTACK_SECRET_KEY');
+      if (!PAYSTACK_SECRET_KEY) {
+        await supabaseClient.from('orders').delete().eq('id', order.id);
+        return new Response(
+          JSON.stringify({ error: 'Paystack is not configured yet. Set PAYSTACK_SECRET_KEY in Supabase secrets.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const initRes = await fetch('https://api.paystack.co/transaction/initialize', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: customer.email,
+          amount: Math.round(total * 100), // Paystack expects kobo
+          reference: orderNumber,
+          callback_url: callback_url || undefined,
+          metadata: { order_id: order.id, order_number: orderNumber },
+        }),
       });
 
-      if (stockError) {
-        console.error('Error decrementing stock:', stockError);
-        // Continue anyway - stock can be manually adjusted
+      const initJson = await initRes.json();
+
+      if (!initRes.ok || !initJson?.status) {
+        console.error('Paystack initialize failed:', initJson);
+        await supabaseClient.from('orders').delete().eq('id', order.id);
+        return new Response(
+          JSON.stringify({ error: initJson?.message || 'Failed to initialize payment' }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          order_number: order.order_number,
+          order_id: order.id,
+          authorization_url: initJson.data.authorization_url,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    // Non-Paystack methods (crypto, etc.) — finalize immediately as before.
+    await finalizeApprovedOrder(supabaseClient, order, `${payment_method}-${order.order_number}`);
 
     // Clear cart if user is logged in
     if (user_id) {
@@ -177,47 +236,6 @@ serve(async (req) => {
         .from('cart_items')
         .delete()
         .eq('user_id', user_id);
-    }
-
-    // Send order confirmation email
-    try {
-      await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
-        },
-        body: JSON.stringify({
-          type: 'order_confirmation',
-          to: customer.email,
-          data: {
-            orderNumber: order.order_number,
-            customerName: customer.name,
-            items: items.map(item => ({
-              name: item.name,
-              variant: [item.size, item.color].filter(Boolean).join(' / '),
-              quantity: item.qty,
-              price: item.price,
-            })),
-            subtotal: total,
-            shipping: shipping_cost,
-            total: total + shipping_cost,
-            shippingAddress: {
-              name: customer.name,
-              address: customer.address,
-              city: customer.city || '',
-              state: customer.state || '',
-              zipCode: '',
-              phone: customer.phone || '',
-            },
-            orderDate: order.created_at,
-            email: customer.email,
-          },
-        }),
-      });
-    } catch (emailError) {
-      console.error('Error sending confirmation email:', emailError);
-      // Don't fail the order if email fails
     }
 
     return new Response(

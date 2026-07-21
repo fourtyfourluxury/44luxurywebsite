@@ -78,10 +78,21 @@ export default function Checkout() {
           items,
           payment_method: paymentMethod,
           user_id: user?.id || null,
+          delivery_method: deliveryMethod,
+          callback_url: `${window.location.origin}/order-confirmed`,
         },
       });
 
       if (error) throw error;
+
+      if (paymentMethod === 'paystack') {
+        if (!data.authorization_url) throw new Error('Paystack did not return a checkout URL');
+        // Full-page redirect to Paystack's hosted checkout. Cart is cleared
+        // only after payment is verified back on /order-confirmed, not here.
+        window.location.href = data.authorization_url;
+        return;
+      }
+
       clearCart();
       navigate(`/order-confirmed?id=${encodeURIComponent(data.order_number)}`);
     } catch (error) {
@@ -116,6 +127,7 @@ export default function Checkout() {
           payment_method: `crypto_${cryptoId}`,
           crypto_details: { currency: cryptoId, amount: cryptoAmount, wallet: walletAddress },
           user_id: user?.id || null,
+          delivery_method: deliveryMethod,
         },
       });
 
