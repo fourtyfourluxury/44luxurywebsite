@@ -1,17 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ZoomIn } from 'lucide-react';
+import { ZoomIn, ChevronDown } from 'lucide-react';
 import { useSiteStore } from '../store/useSiteStore';
 import { toast } from '../components/ui/ToastProvider';
 import ProductCard from '../components/product/ProductCard';
 import ImageLightbox from '../components/ui/ImageLightbox';
-
-const COLOR_MAP = {
-  'Black': '#1c1c18', 'Bone': '#fcf9f3', 'Burgundy': '#4b0e1e',
-  'Concrete': '#5f5e5e', 'Gold': '#D4AF37', 'White': '#ffffff',
-  'Black/Bone': 'linear-gradient(135deg, #1c1c18 50%, #fcf9f3 50%)',
-  'Bone/Black': 'linear-gradient(135deg, #fcf9f3 50%, #1c1c18 50%)',
-};
+import { resolveSwatchColor, needsSwatchBorder } from '../utils/colors';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -27,6 +21,7 @@ export default function ProductDetail() {
   const [added, setAdded] = useState(false);
   const [sizeError, setSizeError] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [sizeAccordionOpen, setSizeAccordionOpen] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -59,6 +54,7 @@ export default function ProductDetail() {
   const handleAddToCart = () => {
     if (product.sizes?.length > 0 && !selectedSize) {
       setSizeError(true);
+      setSizeAccordionOpen(true);
       return;
     }
     addToCart(product, selectedSize, selectedColor, quantity);
@@ -70,6 +66,7 @@ export default function ProductDetail() {
   const handleBuyNow = () => {
     if (product.sizes?.length > 0 && !selectedSize) {
       setSizeError(true);
+      setSizeAccordionOpen(true);
       return;
     }
     addToCart(product, selectedSize, selectedColor, quantity);
@@ -165,58 +162,68 @@ export default function ProductDetail() {
             )}
             <p className="font-plex text-xs text-[#5f5e5e] mb-6">{product.shortDescription}</p>
 
-            {/* Color picker */}
+            {/* Color picker — swatches only, no name label, so the admin's
+                actual color choice always renders instead of drifting from
+                a stale name-to-hex map. */}
             {product.colors?.length > 0 && (
               <div className="mb-6">
-                <p className="font-grotesk font-bold text-[10px] uppercase tracking-widest text-[#1c1c18] mb-3">
-                  Colour: <span className="font-normal text-[#5f5e5e]">{selectedColor}</span>
-                </p>
-                <div className="flex gap-2">
-                  {product.colors.map(color => {
-                    const mapped = COLOR_MAP[color];
-                    return (
-                      <button
-                        key={color}
-                        onClick={() => setSelectedColor(color)}
-                        title={color}
-                        className={`w-8 h-8 transition-all ${selectedColor === color ? 'ring-2 ring-offset-2 ring-[#1c1c18]' : 'hover:ring-1 hover:ring-[#1c1c18]/40 ring-offset-1'}`}
-                        style={mapped?.startsWith('linear') ? { background: mapped } : { backgroundColor: mapped || '#ccc', border: color === 'Bone' || color === 'White' ? '1px solid #ddd' : 'none' }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Size picker */}
-            {product.sizes?.length > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <p className={`font-grotesk font-bold text-[10px] uppercase tracking-widest ${sizeError ? 'text-red-600' : 'text-[#1c1c18]'}`}>
-                    {sizeError
-                      ? (product.subcategory === 'Footwear' ? 'PLEASE SELECT A SHOE SIZE' : 'PLEASE SELECT A SIZE')
-                      : (product.subcategory === 'Footwear' ? 'Select Shoe Size' : 'Select Size')}
-                  </p>
-                </div>
-                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                  {product.sizes.map(size => (
+                <p className="font-grotesk font-bold text-[10px] uppercase tracking-widest text-[#1c1c18] mb-3">Colour</p>
+                <div className="flex gap-2 flex-wrap">
+                  {product.colors.map(color => (
                     <button
-                      key={size}
-                      onClick={() => { setSelectedSize(size); setSizeError(false); }}
-                      className={`h-11 font-grotesk font-semibold text-xs uppercase tracking-wide transition-all border
-                        ${selectedSize === size
-                          ? 'border-[#1c1c18] bg-[#1c1c18] text-[#fcf9f3]'
-                          : sizeError
-                          ? 'border-red-300 text-[#1c1c18] hover:border-[#1c1c18]'
-                          : 'border-[#1c1c18]/20 text-[#1c1c18] hover:border-[#1c1c18]'
-                        }`}
-                    >
-                      {size}
-                    </button>
+                      key={color}
+                      onClick={() => setSelectedColor(color)}
+                      title={color}
+                      aria-label={color}
+                      className={`w-8 h-8 rounded-full transition-all ${selectedColor === color ? 'ring-2 ring-offset-2 ring-[#1c1c18]' : 'hover:ring-1 hover:ring-[#1c1c18]/40 ring-offset-1'} ${needsSwatchBorder(color) ? 'border border-[#ddd]' : ''}`}
+                      style={{ backgroundColor: resolveSwatchColor(color) }}
+                    />
                   ))}
                 </div>
               </div>
             )}
+
+            {/* Size picker — accordion so longer measured ranges (e.g. Skirts'
+                waist sizes) don't dump dozens of buttons onto the page. */}
+            {product.sizes?.length > 0 && (() => {
+              const sizeNoun = product.subcategory === 'Footwear' ? 'Shoe Size' : product.subcategory === 'Skirts' ? 'Waist Size' : 'Size';
+              return (
+              <div className="mb-6 border border-[#1c1c18]/15">
+                <button
+                  type="button"
+                  onClick={() => setSizeAccordionOpen(o => !o)}
+                  className="w-full flex items-center justify-between px-4 py-3.5"
+                >
+                  <p className={`font-grotesk font-bold text-[10px] uppercase tracking-widest ${sizeError ? 'text-red-600' : 'text-[#1c1c18]'}`}>
+                    {sizeError
+                      ? `PLEASE SELECT A ${sizeNoun.toUpperCase()}`
+                      : `Select ${sizeNoun}`}
+                    {selectedSize && <span className="font-normal normal-case text-[#5f5e5e]"> — {selectedSize}</span>}
+                  </p>
+                  <ChevronDown size={15} className={`text-[#1c1c18] transition-transform ${sizeAccordionOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {sizeAccordionOpen && (
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 px-4 pb-4">
+                    {product.sizes.map(size => (
+                      <button
+                        key={size}
+                        onClick={() => { setSelectedSize(size); setSizeError(false); }}
+                        className={`h-11 font-grotesk font-semibold text-xs uppercase tracking-wide transition-all border
+                          ${selectedSize === size
+                            ? 'border-[#1c1c18] bg-[#1c1c18] text-[#fcf9f3]'
+                            : sizeError
+                            ? 'border-red-300 text-[#1c1c18] hover:border-[#1c1c18]'
+                            : 'border-[#1c1c18]/20 text-[#1c1c18] hover:border-[#1c1c18]'
+                          }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              );
+            })()}
 
             {/* Quantity */}
             <div className="mb-6">

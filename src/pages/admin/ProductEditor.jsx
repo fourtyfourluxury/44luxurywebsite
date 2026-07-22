@@ -6,6 +6,7 @@ import { removeImageBackground } from '../../services/backgroundRemoval';
 import { getAllCollections } from '../../services/admin/collectionAdminService';
 import { toast } from '../../components/ui/ToastProvider';
 import { useSiteStore } from '../../store/useSiteStore';
+import { PRESET_COLORS, resolveSwatchColor, needsSwatchBorder } from '../../utils/colors';
 
 const STEPS = [
   { id: 1, label: 'Basic Info',  desc: 'Name, category, collection' },
@@ -18,19 +19,22 @@ const STEPS = [
 const SIZES = ['XS','S','M','L','XL','XXL','XXXL'];
 const SHOE_SIZES = ['36','37','38','39','40','41','42','43','44','45','46'];
 const SOCK_SIZES = ['S','M','L','XL'];
+// Waist measurement in inches — a genuinely measured size rather than
+// alpha (XS/M/L). Deliberately a wider span than Footwear's 11 sizes.
+const SKIRT_SIZES = Array.from({ length: 21 }, (_, i) => String(24 + i)); // 24"–44"
 
 // Per-category sizing convention. Sweatshirts, Polo Shirts, Tank Tops, Crop
-// Tops, Skirts, and Denim all use standard alpha sizing (the SIZES fallback
-// below) — Skirts and Denim are streetwear-cut here, not tailored/numeric.
-// Footwear and Socks get their own scales; Caps are snapback/adjustable, so
-// there's no size to pick at all.
+// Tops, and Denim use standard alpha sizing (the SIZES fallback below) —
+// Denim is streetwear-cut here, not tailored/numeric. Skirts are measured by
+// waist inches. Footwear and Socks get their own scales; Caps are
+// snapback/adjustable, so there's no size to pick at all.
 const SIZE_CONFIG = {
   Footwear: { options: SHOE_SIZES, label: 'Available Shoe Sizes' },
   Socks:    { options: SOCK_SIZES, label: 'Available Sizes', hint: 'S fits shoe 4–6 · M fits 6–9 · L fits 9–12 · XL fits 13+' },
   Caps:     { options: [], label: null, hint: 'One Size Fits All — snapback/adjustable, no size selection needed.' },
+  Skirts:   { options: SKIRT_SIZES, label: 'Available Waist Sizes', hint: 'Measured waist size, in inches.' },
 };
 const getSizeConfig = (subcategory) => SIZE_CONFIG[subcategory] || { options: SIZES, label: 'Available Sizes' };
-const PRESET_COLORS = ['Black','White','Navy','Beige','Grey','Brown','Olive','Burgundy','Cream'];
 const PRODUCT_CATEGORIES = [
   'Sweatshirts',
   'Polo Shirts',
@@ -583,11 +587,12 @@ export default function ProductEditor({ product, onClose, onSave }) {
               )}
               <Field label="Available Colors">
                 <div className="flex flex-wrap gap-2 mb-3">
-                  {PRESET_COLORS.map(c => (
-                    <button key={c} type="button" onClick={() => toggle('colors', c, form.colors)}
-                      className={`px-3 py-2 rounded-xl text-[12px] font-medium border transition-all
-                        ${form.colors.includes(c) ? 'bg-white/10 text-white border-white/30' : 'border-white/[0.06] text-white/40 hover:border-white/15'}`}>
-                      {c}
+                  {PRESET_COLORS.map(({ name, hex }) => (
+                    <button key={name} type="button" onClick={() => toggle('colors', name, form.colors)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-medium border transition-all
+                        ${form.colors.includes(name) ? 'bg-white/10 text-white border-white/30' : 'border-white/[0.06] text-white/40 hover:border-white/15'}`}>
+                      <span className={`w-3.5 h-3.5 rounded-full shrink-0 ${needsSwatchBorder(name) ? 'border border-white/30' : ''}`} style={{ backgroundColor: hex }} />
+                      {name}
                     </button>
                   ))}
                 </div>
@@ -601,6 +606,7 @@ export default function ProductEditor({ product, onClose, onSave }) {
                   <div className="flex flex-wrap gap-2 mt-3">
                     {form.colors.map(c => (
                       <span key={c} className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-[11px] text-white/70">
+                        <span className={`w-3 h-3 rounded-full shrink-0 ${needsSwatchBorder(c) ? 'border border-white/30' : ''}`} style={{ backgroundColor: resolveSwatchColor(c) }} />
                         {c} <button onClick={() => toggle('colors', c, form.colors)} className="text-white/30 hover:text-red-400 transition-colors"><X size={10} /></button>
                       </span>
                     ))}
