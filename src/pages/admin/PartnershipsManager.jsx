@@ -186,7 +186,9 @@ export default function PartnershipsManager() {
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${sc.bg} ${sc.text}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />{sc.label}
                     </span>
-                    <span className="text-[11px] text-white/30">{(p.featured_product_ids || []).length} products</span>
+                    <span className="text-[11px] text-white/30">
+                      {(p.featured_product_ids || []).filter(id => products.some(pr => pr.id === id)).length} products
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <button onClick={() => openEdit(p)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/[0.06] transition-all">
@@ -282,6 +284,9 @@ export default function PartnershipsManager() {
               </div>
 
               {/* Products */}
+              {(() => {
+                const validProductIds = form.featured_product_ids.filter(id => products.some(pr => pr.id === id));
+                return (
               <div className="border-t border-white/[0.06] pt-5">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Products in this Partnership</p>
@@ -290,16 +295,15 @@ export default function PartnershipsManager() {
                     onClick={() => setProductPickerOpen(true)}
                     className="text-[11px] font-bold text-[#c9a96e] hover:text-[#d4b87e] transition-colors"
                   >
-                    {form.featured_product_ids.length > 0 ? 'Edit Products' : '+ Select Products'}
+                    {validProductIds.length > 0 ? 'Edit Products' : '+ Select Products'}
                   </button>
                 </div>
-                {form.featured_product_ids.length === 0 ? (
+                {validProductIds.length === 0 ? (
                   <p className="text-[11px] text-amber-400/80">No products yet — this partnership's page will show "Coming Soon" until you add some.</p>
                 ) : (
                   <div className="grid grid-cols-4 gap-2">
-                    {form.featured_product_ids.map(id => {
+                    {validProductIds.map(id => {
                       const product = products.find(pr => pr.id === id);
-                      if (!product) return null;
                       return (
                         <div key={id} className="aspect-square bg-white/5 border border-white/10 rounded-lg overflow-hidden flex items-center justify-center">
                           {product.images?.[0]
@@ -311,6 +315,8 @@ export default function PartnershipsManager() {
                   </div>
                 )}
               </div>
+                );
+              })()}
 
               {/* SEO Section */}
               <div className="border-t border-white/[0.06] pt-5 space-y-4">

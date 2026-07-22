@@ -165,6 +165,33 @@ export const updateProduct = async (productId, updates) => {
 
 // ─── Delete ──────────────────────────────────────────────────────────────────
 
+// partnerships.featured_product_ids and homepage_sections.product_ids are
+// plain UUID[] columns with no foreign key — Postgres can't cascade into
+// array elements, so deleting a product silently leaves it referenced there
+// forever (stale "N products" counts) unless we strip it out ourselves.
+const removeProductsFromArrayColumns = async (productIds) => {
+  if (!productIds?.length) return;
+  const tables = [
+    { name: 'partnerships', column: 'featured_product_ids' },
+    { name: 'homepage_sections', column: 'product_ids' },
+  ];
+  const idSet = new Set(productIds);
+
+  for (const { name, column } of tables) {
+    const { data: rows, error } = await supabase
+      .from(name)
+      .select(`id, ${column}`)
+      .overlaps(column, productIds);
+
+    if (error || !rows) continue;
+
+    for (const row of rows) {
+      const cleaned = (row[column] || []).filter(id => !idSet.has(id));
+      await supabase.from(name).update({ [column]: cleaned }).eq('id', row.id);
+    }
+  }
+};
+
 export const deleteProduct = async (productId) => {
   try {
     const { data: product } = await supabase
@@ -188,6 +215,8 @@ export const deleteProduct = async (productId) => {
 
     const { error } = await supabase.from('products').delete().eq('id', productId);
     if (error) throw error;
+
+    await removeProductsFromArrayColumns([productId]);
 
     return { success: true, error: null };
   } catch (error) {
@@ -217,6 +246,8 @@ export const bulkDeleteProducts = async (productIds) => {
 
     const { error } = await supabase.from('products').delete().in('id', productIds);
     if (error) throw error;
+
+    await removeProductsFromArrayColumns(productIds);
 
     return { success: true, error: null };
   } catch (error) {

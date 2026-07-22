@@ -781,7 +781,11 @@ function HomepageSectionsModal({ sections: initialSections, products, collection
         .map(p => p.id);
     } else if (type === 'partnership') {
       const partnership = partnerships.find(p => p.id === id);
-      derivedProductIds = (partnership?.featured_product_ids || []).slice(0, 8);
+      // Filter out any stale IDs (deleted products the partnership hasn't
+      // been re-saved since) so they don't propagate into a fresh link.
+      derivedProductIds = (partnership?.featured_product_ids || [])
+        .filter(pid => products.some(p => p.id === pid))
+        .slice(0, 8);
     }
 
     const { error } = await updateHomepageSection(sec.id, {
@@ -859,6 +863,7 @@ function HomepageSectionsModal({ sections: initialSections, products, collection
         )}
         {sections.map((sec, i) => {
           const isLinked = !!(sec.collection_id || sec.partnership_id);
+          const validProductCount = (sec.product_ids || []).filter(id => products.some(p => p.id === id)).length;
           const linkValue = sec.collection_id ? `collection:${sec.collection_id}` : sec.partnership_id ? `partnership:${sec.partnership_id}` : 'none';
           const viewAllHref = sec.collection_id
             ? `/collections/${collections.find(c => c.id === sec.collection_id)?.slug || ''}`
@@ -910,9 +915,9 @@ function HomepageSectionsModal({ sections: initialSections, products, collection
                   </div>
                 )}
                 <p className="text-[10px] mt-0.5">
-                  <span className={(sec.product_ids || []).length === 0 ? 'text-amber-400' : 'text-white/40'}>
-                    {(sec.product_ids || []).length}/8 products
-                    {(sec.product_ids || []).length === 0 && ' — won\'t appear on the homepage until you add at least one'}
+                  <span className={validProductCount === 0 ? 'text-amber-400' : 'text-white/40'}>
+                    {validProductCount}/8 products
+                    {validProductCount === 0 && ' — won\'t appear on the homepage until you add at least one'}
                   </span>
                   {isLinked && <span className="text-[#c9a96e]"> · Auto-synced</span>}
                   {sec.visible === false && <span className="text-white/40"> · Hidden</span>}
