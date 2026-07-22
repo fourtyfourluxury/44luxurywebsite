@@ -48,11 +48,12 @@ serve(async (req) => {
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       );
 
+      // reference is the order UUID (see create-order).
       const reference = event.data.reference;
       const { data: order } = await supabaseClient
         .from('orders')
         .select('*')
-        .eq('order_number', reference)
+        .eq('id', reference)
         .single();
 
       if (order && order.payment_status !== 'APPROVED') {

@@ -39,10 +39,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
+    // reference is the order UUID (see create-order — it's used instead of
+    // order_number to avoid Paystack duplicate-reference collisions).
     const { data: order, error: orderError } = await supabaseClient
       .from('orders')
       .select('*')
-      .eq('order_number', reference)
+      .eq('id', reference)
       .single();
 
     if (orderError || !order) {

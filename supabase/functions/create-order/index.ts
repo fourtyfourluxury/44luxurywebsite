@@ -200,7 +200,12 @@ serve(async (req) => {
           email: customer.email,
           amount: Math.round(total * 100), // Paystack expects kobo
           currency: 'NGN',
-          reference: orderNumber,
+          // order_number (LUX-0001, LUX-0002…) is human-friendly but not
+          // safe as a Paystack reference — it's derived by counting rows,
+          // so it can collide with a reference Paystack already has on file
+          // (e.g. after an order row is deleted and the count resets). The
+          // order's UUID is guaranteed unique and never reused.
+          reference: order.id,
           callback_url: callback_url || undefined,
           metadata: { order_id: order.id, order_number: orderNumber },
         }),
