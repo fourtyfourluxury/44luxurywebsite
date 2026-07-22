@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ZoomIn, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ZoomIn, ChevronLeft, ChevronRight, Bookmark } from 'lucide-react';
 import { useSiteStore } from '../store/useSiteStore';
 import { toast } from '../components/ui/ToastProvider';
 import ProductCard from '../components/product/ProductCard';
@@ -10,7 +10,7 @@ import { resolveSwatchColor, needsSwatchBorder } from '../utils/colors';
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { products, addToCart, addRecentlyViewed, loading, initialized } = useSiteStore();
+  const { products, addToCart, addRecentlyViewed, loading, initialized, toggleWishlist, isWishlisted } = useSiteStore();
 
   const product = products.find(p => p.id === id);
 
@@ -21,7 +21,6 @@ export default function ProductDetail() {
   const [added, setAdded] = useState(false);
   const [sizeError, setSizeError] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [sizeAccordionOpen, setSizeAccordionOpen] = useState(false);
   const [carouselPaused, setCarouselPaused] = useState(false);
 
   useEffect(() => {
@@ -69,7 +68,6 @@ export default function ProductDetail() {
   const handleAddToCart = () => {
     if (product.sizes?.length > 0 && !selectedSize) {
       setSizeError(true);
-      setSizeAccordionOpen(true);
       return;
     }
     addToCart(product, selectedSize, selectedColor, quantity);
@@ -81,7 +79,6 @@ export default function ProductDetail() {
   const handleBuyNow = () => {
     if (product.sizes?.length > 0 && !selectedSize) {
       setSizeError(true);
-      setSizeAccordionOpen(true);
       return;
     }
     addToCart(product, selectedSize, selectedColor, quantity);
@@ -187,31 +184,44 @@ export default function ProductDetail() {
 
           {/* ── Product Info ──────────────────────────── */}
           <div className="lg:w-[52%] flex flex-col pt-2">
-            {/* Meta */}
-            {collectionName && (
-              <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.2em] text-[#5f5e5e] mb-2">
-                {collectionName}
-              </p>
-            )}
-            <h1 className="font-unica text-3xl md:text-4xl uppercase tracking-tighter text-[#1c1c18] leading-tight mb-3">
-              {product.name}
-            </h1>
-            <p className="font-unica text-2xl tracking-tighter text-[#1c1c18] mb-1.5">
-              ₦{product.price?.toLocaleString()}
-            </p>
-            {product.comparePrice && (
-              <p className="font-plex text-sm text-[#5f5e5e] line-through mb-1.5">
-                ₦{product.comparePrice?.toLocaleString()}
-              </p>
-            )}
-            <p className="font-plex text-xs text-[#5f5e5e] mb-5">{product.shortDescription}</p>
+            {/* Name (left) + Price (right), same row */}
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div>
+                {collectionName && (
+                  <p className="font-grotesk font-semibold text-[10px] uppercase tracking-[0.2em] text-[#5f5e5e] mb-1">
+                    {collectionName}
+                  </p>
+                )}
+                <h1 className="font-grotesk font-semibold text-lg text-[#1c1c18]">{product.name}</h1>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="font-grotesk font-semibold text-lg text-[#1c1c18]">₦{product.price?.toLocaleString()}</p>
+                {product.comparePrice && (
+                  <p className="font-plex text-xs text-[#5f5e5e] line-through">₦{product.comparePrice?.toLocaleString()}</p>
+                )}
+              </div>
+            </div>
 
-            {/* Color picker — swatches only, no name label, so the admin's
-                actual color choice always renders instead of drifting from
-                a stale name-to-hex map. */}
+            {product.shortDescription && (
+              <p className="font-plex text-xs text-[#5f5e5e] mb-5">{product.shortDescription}</p>
+            )}
+
+            {/* Colour: label + count + selected name ... Add to Wishlist */}
             {product.colors?.length > 0 && (
-              <div className="mb-5">
-                <p className="font-grotesk font-semibold text-xs text-[#1c1c18] mb-2.5">Colour</p>
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-grotesk font-semibold text-sm text-[#1c1c18]">
+                    Colour<sup className="text-[10px]">{product.colors.length}</sup>
+                    <span className="font-normal text-[#5f5e5e] ml-2">{selectedColor}</span>
+                  </p>
+                  <button
+                    onClick={() => toggleWishlist(product.id)}
+                    className="flex items-center gap-1.5 font-plex text-xs text-[#5f5e5e] hover:text-[#1c1c18] transition-colors"
+                  >
+                    Add to Wishlist
+                    <Bookmark size={14} className={isWishlisted(product.id) ? 'fill-[#1c1c18] text-[#1c1c18]' : ''} />
+                  </button>
+                </div>
                 <div className="flex gap-2 flex-wrap">
                   {product.colors.map(color => (
                     <button
@@ -219,7 +229,7 @@ export default function ProductDetail() {
                       onClick={() => setSelectedColor(color)}
                       title={color}
                       aria-label={color}
-                      className={`w-7 h-7 rounded-full transition-all ${selectedColor === color ? 'ring-2 ring-offset-2 ring-[#1c1c18]' : 'hover:ring-1 hover:ring-[#1c1c18]/40 ring-offset-1'} ${needsSwatchBorder(color) ? 'border border-[#ddd]' : ''}`}
+                      className={`w-14 h-16 transition-all ${selectedColor === color ? 'ring-2 ring-offset-1 ring-[#1c1c18]' : 'ring-1 ring-[#1c1c18]/10 hover:ring-[#1c1c18]/40'} ${needsSwatchBorder(color) ? 'border border-[#ddd]' : ''}`}
                       style={{ backgroundColor: resolveSwatchColor(color) }}
                     />
                   ))}
@@ -227,51 +237,42 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* Size picker — accordion so longer measured ranges (e.g. Skirts'
-                waist sizes) don't dump dozens of buttons onto the page. */}
+            {/* Size: label + selected value + stock status, size grid always visible */}
             {product.sizes?.length > 0 && (() => {
               const sizeNoun = product.subcategory === 'Footwear' ? 'Shoe Size' : product.subcategory === 'Skirts' ? 'Waist Size' : 'Size';
+              const stockLabel = product.status === 'SOLD OUT' ? 'Out of Stock' : product.status === 'PRE-ORDER' ? 'Pre-Order' : 'In Stock';
+              const stockColor = product.status === 'SOLD OUT' ? 'text-red-600' : product.status === 'PRE-ORDER' ? 'text-amber-600' : 'text-emerald-600';
               return (
-              <div className="mb-5 border border-[#1c1c18]/15">
-                <button
-                  type="button"
-                  onClick={() => setSizeAccordionOpen(o => !o)}
-                  className="w-full flex items-center justify-between px-4 py-3"
-                >
-                  <p className={`font-grotesk font-semibold text-xs ${sizeError ? 'text-red-600' : 'text-[#1c1c18]'}`}>
-                    {sizeError
-                      ? `Please select a ${sizeNoun.toLowerCase()}`
-                      : `Select ${sizeNoun}`}
-                    {selectedSize && <span className="font-normal text-[#5f5e5e]"> — {selectedSize}</span>}
-                  </p>
-                  <ChevronDown size={14} className={`text-[#1c1c18] transition-transform ${sizeAccordionOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {sizeAccordionOpen && (
-                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5 px-4 pb-3.5">
-                    {product.sizes.map(size => (
-                      <button
-                        key={size}
-                        onClick={() => { setSelectedSize(size); setSizeError(false); }}
-                        className={`h-10 font-grotesk font-medium text-xs transition-all border
-                          ${selectedSize === size
-                            ? 'border-[#1c1c18] bg-[#1c1c18] text-[#fcf9f3]'
-                            : sizeError
-                            ? 'border-red-300 text-[#1c1c18] hover:border-[#1c1c18]'
-                            : 'border-[#1c1c18]/20 text-[#1c1c18] hover:border-[#1c1c18]'
-                          }`}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <div className="mb-4">
+                <p className={`font-grotesk font-semibold text-sm mb-3 ${sizeError ? 'text-red-600' : 'text-[#1c1c18]'}`}>
+                  {sizeError ? `Please select a ${sizeNoun.toLowerCase()}` : sizeNoun}
+                  {selectedSize && <span className="font-normal text-[#5f5e5e] ml-2">{selectedSize}</span>}
+                  <span className={`font-semibold text-xs ml-3 ${stockColor}`}>{stockLabel}</span>
+                </p>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+                  {product.sizes.map(size => (
+                    <button
+                      key={size}
+                      onClick={() => { setSelectedSize(size); setSizeError(false); }}
+                      className={`h-10 font-grotesk font-medium text-xs rounded transition-all
+                        ${selectedSize === size
+                          ? 'bg-[#1c1c18] text-[#fcf9f3]'
+                          : sizeError
+                          ? 'bg-red-50 text-[#1c1c18]'
+                          : 'bg-[#f1eee7] text-[#1c1c18] hover:bg-[#e8e3d8]'
+                        }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
               </div>
               );
             })()}
 
             {/* Quantity */}
             <div className="mb-5">
-              <p className="font-grotesk font-semibold text-xs text-[#1c1c18] mb-2.5">
+              <p className="font-grotesk font-semibold text-sm text-[#1c1c18] mb-3">
                 Quantity
               </p>
               <div className="flex items-center border border-[#1c1c18]/20 w-fit">
@@ -292,7 +293,7 @@ export default function ProductDetail() {
             </div>
 
             {/* ADD TO BAG + BUY IT NOW */}
-            <div className="flex flex-col gap-2.5 mb-5">
+            <div className="flex flex-col gap-2.5 mb-2">
               <button
                 onClick={handleAddToCart}
                 disabled={product.status === 'SOLD OUT'}
@@ -316,9 +317,18 @@ export default function ProductDetail() {
               )}
             </div>
 
+            {/* Utility disclosure row — real link to the shipping info page */}
+            <Link
+              to="/shipping"
+              className="flex items-center justify-between py-3 border-t border-[#1c1c18]/10 font-plex text-sm text-[#1c1c18] hover:text-[#4b0e1e] transition-colors"
+            >
+              Free shipping
+              <ChevronRight size={16} />
+            </Link>
+
             {/* Product Description Only */}
             {product.description && (
-              <div className="border-t border-[#1c1c18]/10 pt-6">
+              <div className="border-t border-[#1c1c18]/10 pt-5 mt-1">
                 <h3 className="font-grotesk font-semibold text-xs text-[#1c1c18] mb-3">Product Details</h3>
                 <p className="font-plex text-sm text-[#5f5e5e] leading-relaxed">{product.description}</p>
               </div>
