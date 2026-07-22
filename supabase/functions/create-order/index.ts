@@ -7,11 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Shipping fee temporarily disabled site-wide (all orders ship free) while
-// location-based rates are being decided. Restore by reinstating the
-// threshold/flat-cost calc below.
-const FREE_SHIPPING_THRESHOLD = 150000;
-const FLAT_SHIPPING_COST = 5000;
+// Flat nationwide shipping fee (Abuja and every other state) — pickup stays free.
+const FLAT_SHIPPING_COST = 10000;
 
 interface OrderItem {
   product_id: string;
@@ -102,7 +99,7 @@ serve(async (req) => {
 
     // Calculate total (server-side verification)
     const subtotal = verifiedItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
-    const shipping_cost = 0; // shipping disabled site-wide for now — see note above
+    const shipping_cost = delivery_method === 'pickup' ? 0 : FLAT_SHIPPING_COST;
     const total = subtotal + shipping_cost;
 
     // Generate order number
