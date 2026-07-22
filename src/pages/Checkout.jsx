@@ -146,7 +146,9 @@ export default function Checkout() {
     return null;
   }
 
-  const shippingCost = deliveryMethod === 'pickup' ? 0 : (total >= 150000 ? 0 : 5000);
+  // Shipping fee temporarily disabled site-wide while location-based rates
+  // are being decided — mirrors the server-side calc in create-order.
+  const shippingCost = 0;
   const grandTotal = total + shippingCost;
 
   return (
@@ -426,9 +428,7 @@ export default function Checkout() {
                 </div>
                 <div className="flex justify-between">
                   <span className="font-plex text-sm text-[#5f5e5e]">Shipping</span>
-                  <span className="font-plex text-sm text-[#1c1c18]">
-                    {deliveryMethod === 'pickup' ? 'FREE' : (!form.address || !form.city || !form.state ? 'Enter shipping address' : (shippingCost === 0 ? 'FREE' : `₦${shippingCost.toLocaleString()}`))}
-                  </span>
+                  <span className="font-plex text-sm text-[#1c1c18]">FREE</span>
                 </div>
                 <div className="flex justify-between items-baseline border-t border-[#1c1c18]/10 pt-4 mt-1">
                   <span className="font-grotesk font-bold text-base text-[#1c1c18]">Total</span>
