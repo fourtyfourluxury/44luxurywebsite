@@ -17,6 +17,19 @@ const STEPS = [
 
 const SIZES = ['XS','S','M','L','XL','XXL','XXXL'];
 const SHOE_SIZES = ['36','37','38','39','40','41','42','43','44','45','46'];
+const SOCK_SIZES = ['S','M','L','XL'];
+
+// Per-category sizing convention. Sweatshirts, Polo Shirts, Tank Tops, Crop
+// Tops, Skirts, and Denim all use standard alpha sizing (the SIZES fallback
+// below) — Skirts and Denim are streetwear-cut here, not tailored/numeric.
+// Footwear and Socks get their own scales; Caps are snapback/adjustable, so
+// there's no size to pick at all.
+const SIZE_CONFIG = {
+  Footwear: { options: SHOE_SIZES, label: 'Available Shoe Sizes' },
+  Socks:    { options: SOCK_SIZES, label: 'Available Sizes', hint: 'S fits shoe 4–6 · M fits 6–9 · L fits 9–12 · XL fits 13+' },
+  Caps:     { options: [], label: null, hint: 'One Size Fits All — snapback/adjustable, no size selection needed.' },
+};
+const getSizeConfig = (subcategory) => SIZE_CONFIG[subcategory] || { options: SIZES, label: 'Available Sizes' };
 const PRESET_COLORS = ['Black','White','Navy','Beige','Grey','Brown','Olive','Burgundy','Cream'];
 const PRODUCT_CATEGORIES = [
   'Sweatshirts',
@@ -72,13 +85,12 @@ export default function ProductEditor({ product, onClose, onSave }) {
   const videoInputRef = useRef();
 
   // Clothing sizes (XS-XXXL) and shoe sizes (36-46) are two unrelated value
-  // sets. If a product switches category — e.g. was tagged as a T-shirt
-  // with "XL" selected, then changed to Footwear — "XL" has no button to
-  // un-select in the shoe-size picker and would otherwise linger in
-  // form.sizes forever, showing up alongside the real shoe size. Whenever
-  // the category flips in/out of Footwear, strip out sizes that don't
+  // sets (see SIZE_CONFIG above). If a product switches category — e.g. was
+  // tagged as a T-shirt with "XL" selected, then changed to Footwear —
+  // "XL" has no button to un-select in the shoe-size picker and would
+  // otherwise linger in form.sizes forever, showing up alongside the real
+  // shoe size. Whenever the category changes, strip out sizes that don't
   // belong to the newly-active size system.
-  const isFootwearCategory = (subcategory) => subcategory === 'Footwear';
 
   const [form, setForm] = useState({
     name: '', sku: '', category: 'unisex', collection_id: '',
@@ -129,7 +141,7 @@ export default function ProductEditor({ product, onClose, onSave }) {
   // loading an existing product whose sizes array already has a leftover
   // value from before it was tagged Footwear.
   useEffect(() => {
-    const validSizes = isFootwearCategory(form.subcategory) ? SHOE_SIZES : SIZES;
+    const validSizes = getSizeConfig(form.subcategory).options;
     setForm(p => {
       const pruned = p.sizes.filter(s => validSizes.includes(s));
       return pruned.length === p.sizes.length ? p : { ...p, sizes: pruned };
@@ -547,22 +559,28 @@ export default function ProductEditor({ product, onClose, onSave }) {
 
           {/* STEP 3 — Variants */}
           {step === 3 && (() => {
-            const isFootwear = form.subcategory === 'Footwear';
-            const sizeOptions = isFootwear ? SHOE_SIZES : SIZES;
+            const sizeConfig = getSizeConfig(form.subcategory);
             return (
             <div className="max-w-2xl space-y-8">
               <div><h3 className="text-xl font-bold text-white">Sizes & Colors</h3><p className="text-white/30 text-sm mt-1">Select all that apply. Leave blank if not applicable.</p></div>
-              <Field label={isFootwear ? 'Available Shoe Sizes' : 'Available Sizes'}>
-                <div className="flex flex-wrap gap-2">
-                  {sizeOptions.map(s => (
-                    <button key={s} type="button" onClick={() => toggle('sizes', s, form.sizes)}
-                      className={`px-4 py-2.5 rounded-xl text-[12px] font-bold border transition-all
-                        ${form.sizes.includes(s) ? 'bg-[#c9a96e] text-[#0a0a08] border-[#c9a96e]' : 'border-white/[0.08] text-white/40 hover:border-white/20 hover:text-white/70'}`}>
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </Field>
+              {sizeConfig.options.length === 0 ? (
+                <Field label="Sizes">
+                  <p className="text-white/40 text-[13px] bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3">{sizeConfig.hint}</p>
+                </Field>
+              ) : (
+                <Field label={sizeConfig.label}>
+                  <div className="flex flex-wrap gap-2">
+                    {sizeConfig.options.map(s => (
+                      <button key={s} type="button" onClick={() => toggle('sizes', s, form.sizes)}
+                        className={`px-4 py-2.5 rounded-xl text-[12px] font-bold border transition-all
+                          ${form.sizes.includes(s) ? 'bg-[#c9a96e] text-[#0a0a08] border-[#c9a96e]' : 'border-white/[0.08] text-white/40 hover:border-white/20 hover:text-white/70'}`}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                  {sizeConfig.hint && <p className="text-white/25 text-[11px] mt-2">{sizeConfig.hint}</p>}
+                </Field>
+              )}
               <Field label="Available Colors">
                 <div className="flex flex-wrap gap-2 mb-3">
                   {PRESET_COLORS.map(c => (
