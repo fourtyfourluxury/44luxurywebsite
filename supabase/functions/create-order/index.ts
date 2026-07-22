@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { finalizeApprovedOrder } from '../_shared/finalizeOrder.ts';
+import { finalizeApprovedOrder, logPaymentEvent } from '../_shared/finalizeOrder.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -154,6 +154,15 @@ serve(async (req) => {
       );
     }
 
+    await logPaymentEvent(supabaseClient, {
+      order_id: order.id,
+      order_number: order.order_number,
+      event_type: 'ORDER_CREATED',
+      source: 'create-order',
+      amount: Math.round(total * 100),
+      detail: { payment_method, delivery_method, item_count: verifiedItems.length },
+    });
+
     // Create order items
     const orderItems = verifiedItems.map(item => ({
       order_id: order.id,
@@ -172,8 +181,19 @@ serve(async (req) => {
 
     if (itemsError) {
       console.error('Error creating order items:', itemsError);
-      // Rollback order
-      await supabaseClient.from('orders').delete().eq('id', order.id);
+      // Keep the order record (don't silently vanish) but mark it failed so it
+      // shows up in the admin audit trail rather than disappearing.
+      await supabaseClient
+        .from('orders')
+        .update({ payment_status: 'FAILED', admin_notes: 'Order line items failed to save.' })
+        .eq('id', order.id);
+      await logPaymentEvent(supabaseClient, {
+        order_id: order.id,
+        order_number: order.order_number,
+        event_type: 'VERIFY_FAILED',
+        source: 'create-order',
+        detail: { reason: 'order_items_insert_failed', error: itemsError.message },
+      });
       return new Response(
         JSON.stringify({ error: 'Failed to create order items' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -183,7 +203,10 @@ serve(async (req) => {
     if (isPaystack) {
       const PAYSTACK_SECRET_KEY = Deno.env.get('PAYSTACK_SECRET_KEY');
       if (!PAYSTACK_SECRET_KEY) {
-        await supabaseClient.from('orders').delete().eq('id', order.id);
+        await supabaseClient
+          .from('orders')
+          .update({ payment_status: 'FAILED', admin_notes: 'Paystack not configured (missing secret key).' })
+          .eq('id', order.id);
         return new Response(
           JSON.stringify({ error: 'Paystack is not configured yet. Set PAYSTACK_SECRET_KEY in Supabase secrets.' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -215,12 +238,33 @@ serve(async (req) => {
 
       if (!initRes.ok || !initJson?.status) {
         console.error('Paystack initialize failed:', initRes.status, JSON.stringify(initJson));
-        await supabaseClient.from('orders').delete().eq('id', order.id);
+        // Persist the failed attempt rather than deleting it, so it's auditable.
+        await supabaseClient
+          .from('orders')
+          .update({ payment_status: 'FAILED', admin_notes: `Paystack init failed: ${initJson?.message || 'unknown'}` })
+          .eq('id', order.id);
+        await logPaymentEvent(supabaseClient, {
+          order_id: order.id,
+          order_number: order.order_number,
+          event_type: 'PAYSTACK_INIT_FAILED',
+          source: 'create-order',
+          reference: order.id,
+          detail: { status: initRes.status, message: initJson?.message },
+        });
         return new Response(
           JSON.stringify({ error: initJson?.message || 'Failed to initialize payment' }),
           { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      await logPaymentEvent(supabaseClient, {
+        order_id: order.id,
+        order_number: order.order_number,
+        event_type: 'PAYSTACK_INIT',
+        source: 'create-order',
+        reference: order.id,
+        amount: Math.round(total * 100),
+      });
 
       return new Response(
         JSON.stringify({
@@ -234,7 +278,7 @@ serve(async (req) => {
     }
 
     // Non-Paystack methods (crypto, etc.) — finalize immediately as before.
-    await finalizeApprovedOrder(supabaseClient, order, `${payment_method}-${order.order_number}`);
+    await finalizeApprovedOrder(supabaseClient, order, `${payment_method}-${order.order_number}`, 'create-order');
 
     // Clear cart if user is logged in
     if (user_id) {

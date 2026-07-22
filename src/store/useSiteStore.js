@@ -4,6 +4,7 @@ import * as productService from '../services/productService';
 import * as collectionService from '../services/collectionService';
 import * as homepageService from '../services/homepageService';
 import { getPartnerships } from '../services/partnershipService';
+import { getMyOrders } from '../services/orderService';
 import { subscribeToHomepageConfig, subscribeToHeroSlides, subscribeToProducts, subscribeToCollections, subscribeToHomepageSections, subscribeToPartnerships } from '../services/realtimeService';
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -373,6 +374,16 @@ export const useSiteStore = create(
         if (!error) {
           set({ partnerships });
         }
+      },
+
+      // ─── Orders ──────────────────────────────────────────────
+      // Load the signed-in customer's own orders (RLS scopes this to them).
+      fetchMyOrders: async () => {
+        const { orders, error } = await getMyOrders();
+        if (!error) {
+          set({ orders: orders || [] });
+        }
+        return { orders, error };
       },
 
       // ─── Cart Actions ────────────────────────────────────────

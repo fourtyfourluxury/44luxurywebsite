@@ -17,6 +17,14 @@ const ORDER_STATUS = {
   ORDERED:    'bg-[#5f5e5e] text-white',
   DISPATCHED: 'bg-[#4b0e1e] text-white',
   DELIVERED:  'bg-[#1a4a2e] text-white',
+  CANCELLED:  'bg-[#8a2a2a] text-white',
+};
+const PAYMENT_STATUS = {
+  PENDING:   'bg-[#D4AF37] text-[#1c1c18]',
+  APPROVED:  'bg-[#1a4a2e] text-white',
+  FAILED:    'bg-[#8a2a2a] text-white',
+  CANCELLED: 'bg-[#5f5e5e] text-white',
+  REFUNDED:  'bg-[#3a3a3a] text-white',
 };
 const COMPLAINT_STATUS = {
   OPEN:       'bg-[#D4AF37] text-[#1c1c18]',
@@ -447,19 +455,23 @@ const OrderHistory = () => {
       ) : (
         <div className="border border-[#1c1c18]/10 overflow-hidden">
           {/* Table header */}
-          <div className="hidden md:grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-0 bg-[#f6f3ed] border-b border-[#1c1c18]/10">
-            {['Order #', 'Date', 'Items', 'Total (₦)', 'Status', 'Action'].map(h => (
+          <div className="hidden md:grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-0 bg-[#f6f3ed] border-b border-[#1c1c18]/10">
+            {['Order #', 'Date', 'Items', 'Total (₦)', 'Payment', 'Status', 'Action'].map(h => (
               <div key={h} className="px-5 py-3 font-grotesk font-bold text-[9px] uppercase tracking-widest text-[#5f5e5e]">{h}</div>
             ))}
           </div>
-          {orders.map((order, i) => (
+          {orders.map((order, i) => {
+            const items = order.order_items || [];
+            const date = order.created_at ? new Date(order.created_at).toLocaleDateString() : '';
+            return (
             <div key={order.id} className={i < orders.length - 1 ? 'border-b border-[#1c1c18]/08' : ''}>
               {/* Row */}
-              <div className="grid grid-cols-2 md:grid-cols-[auto_1fr_auto_auto_auto_auto] gap-0 items-center hover:bg-[#f9f7f2] transition-colors">
-                <div className="px-5 py-4 font-grotesk font-bold text-sm text-[#1c1c18]">#{order.id}</div>
-                <div className="px-5 py-4 font-plex text-xs text-[#5f5e5e]">{order.date}</div>
-                <div className="px-5 py-4 font-plex text-xs text-[#5f5e5e] hidden md:block">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</div>
-                <div className="px-5 py-4 font-grotesk font-bold text-sm text-[#1c1c18] hidden md:block">₦{order.total.toLocaleString()}</div>
+              <div className="grid grid-cols-2 md:grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-0 items-center hover:bg-[#f9f7f2] transition-colors">
+                <div className="px-5 py-4 font-grotesk font-bold text-sm text-[#1c1c18]">{order.order_number}</div>
+                <div className="px-5 py-4 font-plex text-xs text-[#5f5e5e]">{date}</div>
+                <div className="px-5 py-4 font-plex text-xs text-[#5f5e5e] hidden md:block">{items.length} item{items.length !== 1 ? 's' : ''}</div>
+                <div className="px-5 py-4 font-grotesk font-bold text-sm text-[#1c1c18] hidden md:block">₦{(order.total || 0).toLocaleString()}</div>
+                <div className="px-5 py-4 hidden md:block"><StatusPill status={order.payment_status} map={PAYMENT_STATUS} /></div>
                 <div className="px-5 py-4 hidden md:block"><StatusPill status={order.status} /></div>
                 <div className="px-5 py-4">
                   <button onClick={() => setExpanded(expanded === order.id ? null : order.id)}
@@ -476,13 +488,13 @@ const OrderHistory = () => {
                     <div>
                       <p className="font-grotesk font-bold text-[10px] uppercase tracking-widest text-[#5f5e5e] mb-3">ITEMS</p>
                       <div className="flex flex-col gap-3">
-                        {order.items.map((item, idx) => (
+                        {items.map((item, idx) => (
                           <div key={idx} className="flex gap-3 bg-white p-3 border border-[#1c1c18]/08">
                             {item.image && <img src={item.image} alt="" className="w-12 h-16 object-cover bg-[#f1eee7] shrink-0" />}
                             <div className="min-w-0">
                               <p className="font-grotesk font-bold text-xs uppercase tracking-wide text-[#1c1c18] leading-tight">{item.name}</p>
-                              <p className="font-plex text-xs text-[#5f5e5e] mt-0.5">Size: {item.size} · Color: {item.color} · Qty: {item.qty}</p>
-                              <p className="font-unica text-base tracking-tighter text-[#1c1c18] mt-1">₦{item.price.toLocaleString()}</p>
+                              <p className="font-plex text-xs text-[#5f5e5e] mt-0.5">Size: {item.size || '—'} · Color: {item.color || '—'} · Qty: {item.qty}</p>
+                              <p className="font-unica text-base tracking-tighter text-[#1c1c18] mt-1">₦{(item.price || 0).toLocaleString()}</p>
                             </div>
                           </div>
                         ))}
@@ -496,22 +508,26 @@ const OrderHistory = () => {
                       </div>
                       <div>
                         <p className="font-grotesk font-bold text-[10px] uppercase tracking-widest text-[#5f5e5e] mb-1">PAYMENT</p>
-                        <p className="font-plex text-sm text-[#1c1c18]">{order.paymentMethod}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="font-plex text-sm text-[#1c1c18] capitalize">{order.payment_method}</span>
+                          <StatusPill status={order.payment_status} map={PAYMENT_STATUS} />
+                        </div>
                       </div>
                       <div>
-                        <p className="font-grotesk font-bold text-[10px] uppercase tracking-widest text-[#5f5e5e] mb-1">STATUS</p>
+                        <p className="font-grotesk font-bold text-[10px] uppercase tracking-widest text-[#5f5e5e] mb-1">FULFILMENT STATUS</p>
                         <StatusPill status={order.status} />
                       </div>
                       <div className="border-t border-[#1c1c18]/10 pt-3 flex justify-between">
                         <span className="font-grotesk font-bold text-xs uppercase tracking-widest text-[#5f5e5e]">ORDER TOTAL</span>
-                        <span className="font-unica text-xl tracking-tighter text-[#1c1c18]">₦{order.total.toLocaleString()}</span>
+                        <span className="font-unica text-xl tracking-tighter text-[#1c1c18]">₦{(order.total || 0).toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -785,24 +801,20 @@ const PrivacyNotice = () => (
 // ══════════════════════════════════════════════════════════════
 export default function Account() {
   const { user, isAuthenticated, signOut } = useAuthStore();
+  const { orders, fetchMyOrders } = useSiteStore();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('details');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [orders, setOrders] = useState([]);
 
-  // Note: Realtime subscriptions temporarily disabled to prevent errors
-  // They can be re-enabled once the subscription timing issue is resolved
-  // useEffect(() => {
-  //   if (!user?.id) return;
-  //   const subscriptions = [];
-  //   const orderSub = subscribeToUserOrders(user.id, (update) => {
-  //     console.log('Order update:', update);
-  //   });
-  //   if (orderSub) subscriptions.push(orderSub);
-  //   return () => {
-  //     unsubscribeAll(subscriptions);
-  //   };
-  // }, [user?.id]);
+  // Load this customer's orders once they're authenticated. Also refresh on
+  // realtime order updates so a payment confirmed via webhook shows up without
+  // a manual reload.
+  useEffect(() => {
+    if (!user?.id) return;
+    fetchMyOrders();
+    const sub = subscribeToUserOrders(user.id, () => fetchMyOrders());
+    return () => { if (sub) unsubscribeAll([sub]); };
+  }, [user?.id]);
 
   if (!isAuthenticated) return <Navigate to="/auth" replace />;
 
@@ -845,7 +857,7 @@ export default function Account() {
 
   const renderPanel = () => {
     switch (activeSection) {
-      case 'details':     return <AccountDetails user={user} orders={orders} onNavigate={handleNavigate} />;
+      case 'details':     return <AccountDetails user={user} orders={orders || []} onNavigate={handleNavigate} />;
       case 'addresses':   return <Addresses />;
       case 'preferences': return <ContactPreferences />;
       case 'orders':      return <OrderHistory />;

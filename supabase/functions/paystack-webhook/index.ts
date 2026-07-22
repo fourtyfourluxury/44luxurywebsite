@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { finalizeApprovedOrder } from '../_shared/finalizeOrder.ts';
+import { finalizeApprovedOrder, logPaymentEvent } from '../_shared/finalizeOrder.ts';
 
 // Server-to-server callback from Paystack — not called from the browser, so
 // it must be deployed with --no-verify-jwt (Paystack never sends a Supabase
@@ -56,10 +56,22 @@ serve(async (req) => {
         .eq('id', reference)
         .single();
 
+      await logPaymentEvent(supabaseClient, {
+        order_id: order?.id ?? null,
+        order_number: order?.order_number ?? null,
+        event_type: 'WEBHOOK_RECEIVED',
+        source: 'webhook',
+        reference,
+        amount: event.data.amount,
+        detail: { event: event.event, status: event.data.status },
+      });
+
       if (order && order.payment_status !== 'APPROVED') {
+        // Amount must match what we recorded — guards against a spoofed or
+        // mismatched amount even though the signature already checked out.
         const paid = event.data.status === 'success' && event.data.amount === Math.round(order.total * 100);
         if (paid) {
-          await finalizeApprovedOrder(supabaseClient, order, event.data.reference);
+          await finalizeApprovedOrder(supabaseClient, order, event.data.reference, 'webhook');
         }
       }
     }

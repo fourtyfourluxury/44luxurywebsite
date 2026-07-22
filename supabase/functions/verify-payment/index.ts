@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { finalizeApprovedOrder } from '../_shared/finalizeOrder.ts';
+import { finalizeApprovedOrder, logPaymentEvent } from '../_shared/finalizeOrder.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,25 +66,59 @@ serve(async (req) => {
     });
     const verifyJson = await verifyRes.json();
 
+    const gatewayStatus = verifyJson?.data?.status; // success | failed | abandoned | ongoing
     const paid = verifyRes.ok
-      && verifyJson?.data?.status === 'success'
+      && gatewayStatus === 'success'
       && verifyJson?.data?.amount === Math.round(order.total * 100)
       && verifyJson?.data?.currency === 'NGN';
 
     if (!paid) {
-      console.error('Paystack verification failed:', verifyJson);
-      await supabaseClient
-        .from('orders')
-        .update({ payment_status: 'FAILED' })
-        .eq('id', order.id)
-        .neq('payment_status', 'APPROVED');
+      console.error('Paystack verification not successful:', gatewayStatus, JSON.stringify(verifyJson));
+      // 'abandoned' means the customer left the Paystack page without paying —
+      // record that as CANCELLED rather than a hard FAILED so the admin can
+      // tell "gave up" apart from "card declined". 'ongoing' means still in
+      // progress: leave it PENDING and let the webhook settle it.
+      if (gatewayStatus !== 'ongoing') {
+        const newStatus = gatewayStatus === 'abandoned' ? 'CANCELLED' : 'FAILED';
+        const { error: updErr } = await supabaseClient
+          .from('orders')
+          .update({ payment_status: newStatus })
+          .eq('id', order.id)
+          .neq('payment_status', 'APPROVED');
+        // 'CANCELLED' is only a valid status once migration 029 is applied; if
+        // the constraint rejects it (pre-029), fall back to 'FAILED'.
+        if (updErr && newStatus === 'CANCELLED') {
+          await supabaseClient
+            .from('orders')
+            .update({ payment_status: 'FAILED' })
+            .eq('id', order.id)
+            .neq('payment_status', 'APPROVED');
+        }
+        await logPaymentEvent(supabaseClient, {
+          order_id: order.id,
+          order_number: order.order_number,
+          event_type: 'VERIFY_FAILED',
+          source: 'verify-payment',
+          reference,
+          detail: { gateway_status: gatewayStatus, message: verifyJson?.data?.gateway_response },
+        });
+      }
       return new Response(
-        JSON.stringify({ success: false, error: 'Payment could not be verified' }),
+        JSON.stringify({ success: false, status: gatewayStatus, error: 'Payment could not be verified' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    await finalizeApprovedOrder(supabaseClient, order, verifyJson.data.reference);
+    await logPaymentEvent(supabaseClient, {
+      order_id: order.id,
+      order_number: order.order_number,
+      event_type: 'PAYMENT_VERIFIED',
+      source: 'verify-payment',
+      reference,
+      amount: verifyJson.data.amount,
+    });
+
+    await finalizeApprovedOrder(supabaseClient, order, verifyJson.data.reference, 'verify-payment');
 
     return new Response(
       JSON.stringify({ success: true, order: { ...order, payment_status: 'APPROVED' } }),

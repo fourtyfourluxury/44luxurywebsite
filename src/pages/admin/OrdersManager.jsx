@@ -26,6 +26,23 @@ function StatusPill({ status }) {
   );
 }
 
+const PAYMENT = {
+  PENDING:   { label: 'Payment pending',  text: 'text-amber-400',   bg: 'bg-amber-500/10' },
+  APPROVED:  { label: 'Paid',             text: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  FAILED:    { label: 'Payment failed',   text: 'text-red-400',     bg: 'bg-red-500/10' },
+  CANCELLED: { label: 'Payment cancelled',text: 'text-white/40',    bg: 'bg-white/[0.06]' },
+  REFUNDED:  { label: 'Refunded',         text: 'text-white/50',    bg: 'bg-white/[0.06]' },
+};
+
+function PaymentPill({ status }) {
+  const s = PAYMENT[status] || PAYMENT.PENDING;
+  return (
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold ${s.bg} ${s.text}`}>
+      {s.label}
+    </span>
+  );
+}
+
 export default function OrdersManager() {
   const [orders, setOrders]     = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -135,8 +152,9 @@ export default function OrdersManager() {
               className={`flex items-center gap-4 px-6 py-4 border-b border-white/[0.04] cursor-pointer transition-colors hover:bg-white/[0.02] ${selected?.id === order.id ? 'bg-white/[0.03]' : ''}`}
             >
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <p className="text-[13px] font-semibold text-white">#{order.order_number}</p>
+                  <PaymentPill status={order.payment_status} />
                   <StatusPill status={order.status} />
                 </div>
                 <p className="text-[11px] text-white/40 truncate">{order.customer_name} · {order.customer_email}</p>
@@ -190,7 +208,10 @@ export default function OrdersManager() {
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Status */}
               <div className="flex items-center justify-between">
-                <StatusPill status={detail.status} />
+                <div className="flex items-center gap-2">
+                  <PaymentPill status={detail.payment_status} />
+                  <StatusPill status={detail.status} />
+                </div>
                 <div className="flex gap-2">
                   {NEXT_STATUS[detail.status]?.map(ns => (
                     <button key={ns} onClick={() => handleStatusChange(detail.id, ns)} disabled={updating}
