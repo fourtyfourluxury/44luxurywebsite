@@ -10,6 +10,7 @@ import {
 import { detectMissingColumns, clearSchemaCache } from '../../services/schemaDetector';
 import { toast } from '../../components/ui/ToastProvider';
 import ProductEditor from './ProductEditor';
+import RowActionMenu from '../../components/admin/RowActionMenu';
 
 const STATUS_CFG = {
   ACTIVE:       { dot: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'In Stock' },
@@ -368,48 +369,48 @@ export default function ProductsManager() {
 
                 {/* Actions */}
                 <td className="px-5 py-3.5">
-                  <div className="relative flex justify-end" onClick={e => e.stopPropagation()}>
-                    <button
-                      onClick={() => setMenuOpen(menuOpen === p.id ? null : p.id)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/[0.06] transition-all"
+                  <div className="flex justify-end" onClick={e => e.stopPropagation()}>
+                    <RowActionMenu
+                      open={menuOpen === p.id}
+                      onOpenChange={(next) => setMenuOpen(next ? p.id : null)}
+                      trigger={
+                        <button className="w-8 h-8 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/[0.06] transition-all">
+                          <ChevronDown size={15} />
+                        </button>
+                      }
                     >
-                      <ChevronDown size={15} />
-                    </button>
-                    {menuOpen === p.id && (
-                      <div className="absolute right-0 top-9 bg-[#1e1e1a] border border-white/10 rounded-xl shadow-2xl z-20 w-48 py-1 overflow-hidden">
-                        <button onClick={() => openEdit(p)} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-white/70 hover:bg-white/[0.05] hover:text-white transition-colors">
-                          ✏️ Edit Product
+                      <button onClick={() => { openEdit(p); setMenuOpen(null); }} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-white/70 hover:bg-white/[0.05] hover:text-white transition-colors">
+                        ✏️ Edit Product
+                      </button>
+                      <button onClick={() => { handleDuplicate(p.id); setMenuOpen(null); }} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-white/70 hover:bg-white/[0.05] hover:text-white transition-colors">
+                        <Copy size={13} /> Duplicate
+                      </button>
+                      <div className="border-t border-white/[0.06] my-1" />
+                      {p.status !== 'ACTIVE' && (
+                        <button onClick={() => { handleStatusQuick(p.id, 'ACTIVE'); setMenuOpen(null); }} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-emerald-400 hover:bg-emerald-500/5 transition-colors">
+                          ● Mark In Stock
                         </button>
-                        <button onClick={() => handleDuplicate(p.id)} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-white/70 hover:bg-white/[0.05] hover:text-white transition-colors">
-                          <Copy size={13} /> Duplicate
+                      )}
+                      {p.status !== 'DRAFT' && (
+                        <button onClick={() => { handleStatusQuick(p.id, 'DRAFT'); setMenuOpen(null); }} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-white/50 hover:bg-white/[0.05] transition-colors">
+                          ● Set Draft
                         </button>
-                        <div className="border-t border-white/[0.06] my-1" />
-                        {p.status !== 'ACTIVE' && (
-                          <button onClick={() => handleStatusQuick(p.id, 'ACTIVE')} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-emerald-400 hover:bg-emerald-500/5 transition-colors">
-                            ● Mark In Stock
-                          </button>
-                        )}
-                        {p.status !== 'DRAFT' && (
-                          <button onClick={() => handleStatusQuick(p.id, 'DRAFT')} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-white/50 hover:bg-white/[0.05] transition-colors">
-                            ● Set Draft
-                          </button>
-                        )}
-                        {p.status !== 'SOLD OUT' && (
-                          <button onClick={() => handleStatusQuick(p.id, 'SOLD OUT')} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-red-400 hover:bg-red-500/5 transition-colors">
-                            ● Mark Out of Stock
-                          </button>
-                        )}
-                        {p.status !== 'PRE-ORDER' && (
-                          <button onClick={() => handleStatusQuick(p.id, 'PRE-ORDER')} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-blue-400 hover:bg-blue-500/5 transition-colors">
-                            ● Set Pre-Order
-                          </button>
-                        )}
-                        <div className="border-t border-white/[0.06] my-1" />
-                        <button onClick={() => { setDeleteTarget(p); setMenuOpen(null); }} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-red-400 hover:bg-red-500/5 transition-colors">
-                          <Trash2 size={13} /> Delete
+                      )}
+                      {p.status !== 'SOLD OUT' && (
+                        <button onClick={() => { handleStatusQuick(p.id, 'SOLD OUT'); setMenuOpen(null); }} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-red-400 hover:bg-red-500/5 transition-colors">
+                          ● Mark Out of Stock
                         </button>
-                      </div>
-                    )}
+                      )}
+                      {p.status !== 'PRE-ORDER' && (
+                        <button onClick={() => { handleStatusQuick(p.id, 'PRE-ORDER'); setMenuOpen(null); }} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-blue-400 hover:bg-blue-500/5 transition-colors">
+                          ● Set Pre-Order
+                        </button>
+                      )}
+                      <div className="border-t border-white/[0.06] my-1" />
+                      <button onClick={() => { setDeleteTarget(p); setMenuOpen(null); }} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-[12px] text-red-400 hover:bg-red-500/5 transition-colors">
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </RowActionMenu>
                   </div>
                 </td>
               </tr>

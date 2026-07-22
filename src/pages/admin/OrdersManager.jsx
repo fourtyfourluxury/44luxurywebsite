@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, ShoppingCart, ChevronDown, X, Package, MapPin, Phone, Mail, Clock, Truck, CheckCircle, XCircle } from 'lucide-react';
 import { getAllOrders, updateOrderStatus, updateTrackingInfo, getOrderDetails, exportOrdersToCSV } from '../../services/admin/orderAdminService';
 import { toast } from '../../components/ui/ToastProvider';
+import RowActionMenu from '../../components/admin/RowActionMenu';
 
 const STATUS = {
   ORDERED:    { label: 'Ordered',    dot: 'bg-blue-400',    text: 'text-blue-400',    bg: 'bg-blue-500/10' },
@@ -163,17 +164,19 @@ export default function OrdersManager() {
                 <p className="text-[13px] font-semibold text-white">₦{(order.total||0).toLocaleString()}</p>
                 <p className="text-[10px] text-white/30 mt-0.5">{fmt(order.created_at)}</p>
               </div>
-              <div className="relative shrink-0" onClick={e => e.stopPropagation()}>
+              <div className="shrink-0" onClick={e => e.stopPropagation()}>
                 {NEXT_STATUS[order.status]?.length > 0 && (
-                  <button onClick={() => setMenuOpen(menuOpen === order.id ? null : order.id)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white/20 hover:text-white hover:bg-white/[0.06] transition-all">
-                    <ChevronDown size={14} />
-                  </button>
-                )}
-                {menuOpen === order.id && (
-                  <div className="absolute right-0 top-9 bg-[#1e1e1a] border border-white/10 rounded-xl shadow-2xl z-20 w-44 py-1">
+                  <RowActionMenu
+                    open={menuOpen === order.id}
+                    onOpenChange={(next) => setMenuOpen(next ? order.id : null)}
+                    trigger={
+                      <button className="w-8 h-8 rounded-lg flex items-center justify-center text-white/20 hover:text-white hover:bg-white/[0.06] transition-all">
+                        <ChevronDown size={14} />
+                      </button>
+                    }
+                  >
                     {NEXT_STATUS[order.status]?.map(ns => (
-                      <button key={ns} onClick={() => handleStatusChange(order.id, ns)}
+                      <button key={ns} onClick={() => { handleStatusChange(order.id, ns); setMenuOpen(null); }}
                         className={`flex items-center gap-2 w-full px-4 py-2.5 text-[12px] transition-colors ${ns === 'CANCELLED' ? 'text-red-400 hover:bg-red-500/5' : `${STATUS[ns]?.text} hover:bg-white/[0.04]`}`}>
                         {ns === 'DISPATCHED' && <Truck size={12} />}
                         {ns === 'DELIVERED'  && <CheckCircle size={12} />}
@@ -181,7 +184,7 @@ export default function OrdersManager() {
                         Mark {STATUS[ns]?.label}
                       </button>
                     ))}
-                  </div>
+                  </RowActionMenu>
                 )}
               </div>
             </div>
