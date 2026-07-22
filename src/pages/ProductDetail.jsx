@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ZoomIn, ChevronDown } from 'lucide-react';
+import { ZoomIn, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSiteStore } from '../store/useSiteStore';
 import { toast } from '../components/ui/ToastProvider';
 import ProductCard from '../components/product/ProductCard';
@@ -146,11 +146,27 @@ export default function ProductDetail() {
                 </div>
               )}
               {product.images?.length > 1 && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                  {product.images.map((_, i) => (
-                    <span key={i} className={`h-1.5 rounded-full transition-all ${i === selectedImage ? 'w-5 bg-[#fcf9f3]' : 'w-1.5 bg-[#fcf9f3]/50'}`} />
-                  ))}
-                </div>
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSelectedImage(i => (i - 1 + product.images.length) % product.images.length); }}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-[#1c1c18]/60 hover:text-[#1c1c18] transition-colors z-10"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft size={22} strokeWidth={1.5} />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSelectedImage(i => (i + 1) % product.images.length); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-[#1c1c18]/60 hover:text-[#1c1c18] transition-colors z-10"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight size={22} strokeWidth={1.5} />
+                  </button>
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                    {product.images.map((_, i) => (
+                      <span key={i} className={`h-1.5 rounded-full transition-all ${i === selectedImage ? 'w-5 bg-[#fcf9f3]' : 'w-1.5 bg-[#fcf9f3]/50'}`} />
+                    ))}
+                  </div>
+                </>
               )}
             </div>
             {/* Thumbnails */}
@@ -195,7 +211,7 @@ export default function ProductDetail() {
                 a stale name-to-hex map. */}
             {product.colors?.length > 0 && (
               <div className="mb-5">
-                <p className="font-grotesk font-bold text-[10px] uppercase tracking-widest text-[#1c1c18] mb-2.5">Colour</p>
+                <p className="font-grotesk font-semibold text-xs text-[#1c1c18] mb-2.5">Colour</p>
                 <div className="flex gap-2 flex-wrap">
                   {product.colors.map(color => (
                     <button
@@ -222,11 +238,11 @@ export default function ProductDetail() {
                   onClick={() => setSizeAccordionOpen(o => !o)}
                   className="w-full flex items-center justify-between px-4 py-3"
                 >
-                  <p className={`font-grotesk font-bold text-[10px] uppercase tracking-widest ${sizeError ? 'text-red-600' : 'text-[#1c1c18]'}`}>
+                  <p className={`font-grotesk font-semibold text-xs ${sizeError ? 'text-red-600' : 'text-[#1c1c18]'}`}>
                     {sizeError
-                      ? `PLEASE SELECT A ${sizeNoun.toUpperCase()}`
+                      ? `Please select a ${sizeNoun.toLowerCase()}`
                       : `Select ${sizeNoun}`}
-                    {selectedSize && <span className="font-normal normal-case text-[#5f5e5e]"> — {selectedSize}</span>}
+                    {selectedSize && <span className="font-normal text-[#5f5e5e]"> — {selectedSize}</span>}
                   </p>
                   <ChevronDown size={14} className={`text-[#1c1c18] transition-transform ${sizeAccordionOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -236,7 +252,7 @@ export default function ProductDetail() {
                       <button
                         key={size}
                         onClick={() => { setSelectedSize(size); setSizeError(false); }}
-                        className={`h-10 font-grotesk font-semibold text-xs uppercase tracking-wide transition-all border
+                        className={`h-10 font-grotesk font-medium text-xs transition-all border
                           ${selectedSize === size
                             ? 'border-[#1c1c18] bg-[#1c1c18] text-[#fcf9f3]'
                             : sizeError
@@ -255,7 +271,7 @@ export default function ProductDetail() {
 
             {/* Quantity */}
             <div className="mb-5">
-              <p className="font-grotesk font-bold text-[10px] uppercase tracking-widest text-[#1c1c18] mb-2.5">
+              <p className="font-grotesk font-semibold text-xs text-[#1c1c18] mb-2.5">
                 Quantity
               </p>
               <div className="flex items-center border border-[#1c1c18]/20 w-fit">
@@ -303,7 +319,7 @@ export default function ProductDetail() {
             {/* Product Description Only */}
             {product.description && (
               <div className="border-t border-[#1c1c18]/10 pt-6">
-                <h3 className="font-grotesk font-bold text-xs uppercase tracking-widest text-[#1c1c18] mb-3">Product Details</h3>
+                <h3 className="font-grotesk font-semibold text-xs text-[#1c1c18] mb-3">Product Details</h3>
                 <p className="font-plex text-sm text-[#5f5e5e] leading-relaxed">{product.description}</p>
               </div>
             )}
