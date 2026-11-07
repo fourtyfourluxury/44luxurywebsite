@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useSiteStore } from '../store/useSiteStore';
 import ProductCard from '../components/product/ProductCard';
 import FilterBar from '../components/product/FilterBar';
+import { getEffectivePrice } from '../utils/pricing';
 
 /**
  * FeaturedSection — public page for a homepage product section that isn't
@@ -11,7 +12,7 @@ import FilterBar from '../components/product/FilterBar';
  */
 export default function FeaturedSection() {
   const { slug } = useParams();
-  const { homepageSections, products } = useSiteStore();
+  const { homepageSections, products, storeSale } = useSiteStore();
 
   const section = homepageSections.find(s => s.slug === slug);
 
@@ -29,9 +30,9 @@ export default function FeaturedSection() {
   }, [products, section]);
 
   const maxPrice = useMemo(() => {
-    const prices = sectionProducts.map(p => p.price || 0);
+    const prices = sectionProducts.map(p => getEffectivePrice(p, storeSale).finalPrice || 0);
     return prices.length > 0 ? Math.ceil(Math.max(...prices) / 1000) * 1000 : 500000;
-  }, [sectionProducts]);
+  }, [sectionProducts, storeSale]);
 
   useEffect(() => {
     if (maxPrice > 0 && priceRange[1] === Infinity) {
@@ -47,7 +48,7 @@ export default function FeaturedSection() {
   if (availability === 'out_of_stock') filteredProducts = filteredProducts.filter(p => (p.stock ?? 1) <= 0);
   if (effectivePriceRange[1] < effectiveMax || effectivePriceRange[0] > 0) {
     filteredProducts = filteredProducts.filter(p => {
-      const price = p.price || 0;
+      const price = getEffectivePrice(p, storeSale).finalPrice || 0;
       return price >= effectivePriceRange[0] && price <= effectivePriceRange[1];
     });
   }

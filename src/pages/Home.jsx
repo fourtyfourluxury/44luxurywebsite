@@ -2,6 +2,7 @@ import HeroSlider from '../components/home/HeroSlider';
 import ProductGrid from '../components/home/ProductGrid';
 import CategoriesShowcase from '../components/home/CategoriesShowcase';
 import StoreMap from '../components/home/StoreMap';
+import HomeVideos from '../components/home/HomeVideos';
 import { useSiteStore } from '../store/useSiteStore';
 
 export default function Home() {
@@ -12,6 +13,9 @@ export default function Home() {
     <>
       {/* 1. Full-viewport CMS campaign carousel */}
       <HeroSlider />
+
+      {/* 1b. Admin-managed videos assigned to Home (renders nothing if none) */}
+      <HomeVideos />
 
       {/* 2. First admin-managed product section (e.g. NEW ARRIVALS) */}
       {firstSection && <ProductGrid section={firstSection} />}

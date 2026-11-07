@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useSiteStore } from '../store/useSiteStore';
 import ProductCard from '../components/product/ProductCard';
 import FilterBar from '../components/product/FilterBar';
+import { getEffectivePrice } from '../utils/pricing';
 
 // ── Category metadata ──────────────────────────────────────────────────────────
 const CATEGORY_META = {
@@ -50,7 +51,7 @@ const CATEGORY_META = {
 
 // ── Category Page ─────────────────────────────────────────────────────────────
 export default function CategoryPage({ category }) {
-  const { products, _hasHydrated, categoryBanners } = useSiteStore();
+  const { products, storeSale, _hasHydrated, categoryBanners } = useSiteStore();
   const meta = CATEGORY_META[category] || { title: category.toUpperCase(), keywords: [category], bannerImage: null };
   const bannerImage = categoryBanners?.[category] ?? meta.bannerImage;
 
@@ -69,9 +70,9 @@ export default function CategoryPage({ category }) {
 
   // Compute max price
   const maxPrice = useMemo(() => {
-    const prices = categoryProducts.map(p => p.price || 0);
+    const prices = categoryProducts.map(p => getEffectivePrice(p, storeSale).finalPrice || 0);
     return prices.length > 0 ? Math.ceil(Math.max(...prices) / 1000) * 1000 : 500000;
-  }, [categoryProducts]);
+  }, [categoryProducts, storeSale]);
 
   // Set price range once max known
   useEffect(() => {
@@ -89,7 +90,7 @@ export default function CategoryPage({ category }) {
   if (availability === 'out_of_stock') filtered = filtered.filter(p => (p.stock ?? 1) <= 0);
   if (effectivePriceRange[1] < effectiveMax || effectivePriceRange[0] > 0) {
     filtered = filtered.filter(p => {
-      const price = p.price || 0;
+      const price = getEffectivePrice(p, storeSale).finalPrice || 0;
       return price >= effectivePriceRange[0] && price <= effectivePriceRange[1];
     });
   }

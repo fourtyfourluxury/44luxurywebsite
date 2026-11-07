@@ -1,51 +1,20 @@
-import { useRef, useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSiteStore } from '../../store/useSiteStore';
 
 /**
- * CategoriesShowcase — horizontally scrollable editorial category tiles
+ * CategoriesShowcase — responsive editorial category grid
  *
  * Layout language: YL Collectives
  * ─ Section: full-width, cream background (#fcf9f3)
  * ─ Generous top/bottom whitespace (py-20 md:py-28)
- * ─ Tiles are fixed-width and scroll horizontally so any number of
- *   categories can be added without breaking the layout — arrow buttons
- *   (desktop) or a swipe (mobile) reveal the rest.
- * ─ Tile: category name anchored bottom-center, red outline "SHOP NOW" button
+ * ─ Responsive CSS Grid (.category-showcase-grid in index.css):
+ *   4 cols on desktop (>=1280px), 3 cols on laptop (>=1024px), 2 cols below 1024px.
+ * ─ Tile: fixed aspect ratio, category name anchored bottom-center, red outline "SHOP NOW" button
  */
 export default function CategoriesShowcase() {
   const { categories } = useSiteStore();
-  const scrollRef = useRef(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const updateScrollState = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-  };
-
-  useEffect(() => {
-    updateScrollState();
-    const el = scrollRef.current;
-    if (!el) return;
-    el.addEventListener('scroll', updateScrollState, { passive: true });
-    window.addEventListener('resize', updateScrollState);
-    return () => {
-      el.removeEventListener('scroll', updateScrollState);
-      window.removeEventListener('resize', updateScrollState);
-    };
-  }, [categories]);
-
-  const scrollByAmount = (direction) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const tile = el.querySelector('[data-tile]');
-    const amount = tile ? tile.getBoundingClientRect().width + 16 : el.clientWidth * 0.8;
-    el.scrollBy({ left: direction * amount, behavior: 'smooth' });
-  };
+  const [failedImages, setFailedImages] = useState({});
 
   if (!categories || categories.length === 0) return null;
 
@@ -60,39 +29,36 @@ export default function CategoriesShowcase() {
           </h2>
         </div>
 
-        {/* Scrollable Category Tiles */}
-        <div className="relative">
-          {/* Left arrow */}
-          {canScrollLeft && (
-            <button
-              onClick={() => scrollByAmount(-1)}
-              aria-label="Show previous categories"
-              className="force-circle hidden md:flex absolute left-3 md:left-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full items-center justify-center bg-white/90 backdrop-blur-sm shadow-lg hover:bg-white text-[#1c1c18] transition-colors"
-            >
-              <ChevronLeft size={20} strokeWidth={2} />
-            </button>
-          )}
+        {/* Responsive Category Grid */}
+        <div className="category-showcase-grid">
+          {categories.map((cat, i) => {
+            const key = cat.label || i;
+            const hasValidImage = Boolean(cat.image && !failedImages[key]);
 
-          <div
-            ref={scrollRef}
-            className="flex gap-3 md:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide"
-          >
-            {categories.map((cat, i) => (
+            return (
               <Link
-                key={cat.label || i}
+                key={key}
                 to={cat.slug || '/shop'}
-                data-tile
-                className="relative group overflow-hidden aspect-[4/5] block bg-[#1c1c18] shrink-0 snap-start w-[46%] sm:w-[31%] md:w-[calc(25%-12px)]"
+                style={{ aspectRatio: 'var(--category-card-aspect, 4 / 5)' }}
+                className="relative group overflow-hidden w-full aspect-[4/5] block bg-[#1c1c18]
+                           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4b0e1e]"
               >
-                {/* Background Image — subtle zoom on hover */}
-                {cat.image && (
+                {/* Background Image or subtle dark editorial placeholder */}
+                {hasValidImage ? (
                   <img
                     src={cat.image}
                     alt={cat.label}
-                    className="absolute inset-0 w-full h-full object-cover object-center
+                    onError={() => setFailedImages(prev => ({ ...prev, [key]: true }))}
+                    style={{ objectPosition: 'center top' }}
+                    className="absolute inset-0 w-full h-full object-cover object-top
                                transition-transform duration-[1600ms] ease-out
                                group-hover:scale-105 opacity-85 group-hover:opacity-70"
                     loading="lazy"
+                  />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0 bg-gradient-to-br from-[#2a2a24] via-[#1c1c18] to-[#12120f]"
                   />
                 )}
 
@@ -100,31 +66,21 @@ export default function CategoriesShowcase() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
 
                 {/* Category Name + SHOP NOW — anchored bottom-centre */}
-                <div className="absolute inset-0 flex flex-col items-center justify-end pb-7 px-4 text-center">
-                  <h3 className="font-unica text-2xl md:text-4xl uppercase tracking-wider text-[#fcf9f3] mb-4 drop-shadow-lg">
+                <div className="absolute inset-0 flex flex-col items-center justify-end pb-5 md:pb-7 px-3 md:px-4 text-center">
+                  <h3 className="font-unica text-[clamp(1.2rem,2.4vw,2.25rem)] leading-tight uppercase tracking-wider text-[#fcf9f3] mb-3 md:mb-4 drop-shadow-lg max-w-full break-words">
                     {cat.label}
                   </h3>
                   <span className="inline-block border-2 border-[#4b0e1e] text-[#4b0e1e] bg-white/95
                                    font-grotesk font-bold text-[10px] uppercase tracking-[0.18em]
-                                   px-5 py-2 transition-all duration-300
-                                   group-hover:bg-[#4b0e1e] group-hover:text-white">
+                                   px-4 md:px-5 py-2 transition-all duration-300
+                                   group-hover:bg-[#4b0e1e] group-hover:text-white
+                                   group-focus-visible:bg-[#4b0e1e] group-focus-visible:text-white">
                     SHOP NOW
                   </span>
                 </div>
               </Link>
-            ))}
-          </div>
-
-          {/* Right arrow */}
-          {canScrollRight && (
-            <button
-              onClick={() => scrollByAmount(1)}
-              aria-label="Show more categories"
-              className="force-circle hidden md:flex absolute right-3 md:right-4 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full items-center justify-center bg-white/90 backdrop-blur-sm shadow-lg hover:bg-white text-[#1c1c18] transition-colors"
-            >
-              <ChevronRight size={20} strokeWidth={2} />
-            </button>
-          )}
+            );
+          })}
         </div>
       </div>
     </section>

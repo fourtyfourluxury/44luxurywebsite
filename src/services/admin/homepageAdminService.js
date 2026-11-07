@@ -142,14 +142,18 @@ export async function createHeroSlide(slideData) {
       .limit(1);
 
     const nextOrder = slides && slides.length > 0 ? slides[0].sort_order + 1 : 0;
+    const isVid = slideData.media_type === 'video';
 
     // Convert camelCase to snake_case for database
     const dbData = {
-      image: slideData.image,
+      image: slideData.image || (isVid ? (slideData.poster_url || slideData.video_url || '') : ''),
+      media_type: isVid ? 'video' : 'image',
+      video_url: isVid ? (slideData.video_url || null) : null,
+      poster_url: slideData.poster_url || null,
       headline: slideData.headline,
       subheadline: slideData.subheadline,
-      cta_label: slideData.ctaLabel || slideData.cta_label,
-      cta_link: slideData.ctaLink || slideData.cta_link,
+      cta_label: slideData.ctaLabel ?? slideData.cta_label,
+      cta_link: slideData.ctaLink ?? slideData.cta_link,
       text_position: slideData.textPosition || slideData.text_position,
       sort_order: nextOrder,
     };
@@ -164,7 +168,7 @@ export async function createHeroSlide(slideData) {
 
     return { data, error: null };
   } catch (error) {
-    console.error('Error creating hero slide:', error);
+    console.error(error.message, error.details, error.hint, error.code);
     return { data: null, error: error.message };
   }
 }
@@ -177,13 +181,17 @@ export async function createHeroSlide(slideData) {
  */
 export async function updateHeroSlide(slideId, updates) {
   try {
+    const isVid = updates.media_type === 'video';
     // Convert camelCase to snake_case for database
     const dbUpdates = {
-      image: updates.image,
+      image: updates.image !== undefined ? updates.image : (isVid ? (updates.poster_url || updates.video_url) : undefined),
+      media_type: updates.media_type,
+      video_url: updates.video_url,
+      poster_url: updates.poster_url,
       headline: updates.headline,
       subheadline: updates.subheadline,
-      cta_label: updates.ctaLabel || updates.cta_label,
-      cta_link: updates.ctaLink || updates.cta_link,
+      cta_label: updates.ctaLabel ?? updates.cta_label,
+      cta_link: updates.ctaLink ?? updates.cta_link,
       text_position: updates.textPosition || updates.text_position,
       sort_order: updates.sort_order,
     };
@@ -206,7 +214,7 @@ export async function updateHeroSlide(slideId, updates) {
 
     return { data, error: null };
   } catch (error) {
-    console.error('Error updating hero slide:', error);
+    console.error(error.message, error.details, error.hint, error.code);
     return { data: null, error: error.message };
   }
 }
@@ -227,7 +235,7 @@ export async function deleteHeroSlide(slideId) {
 
     return { success: true, error: null };
   } catch (error) {
-    console.error('Error deleting hero slide:', error);
+    console.error(error.message, error.details, error.hint, error.code);
     return { success: false, error: error.message };
   }
 }

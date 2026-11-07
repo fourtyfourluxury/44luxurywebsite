@@ -1,5 +1,38 @@
 import { supabase } from '../../lib/supabase';
 import { sendOrderStatusEmail } from '../emailService';
+import { PAID_PAYMENT_STATUS, VALID_FULFILLMENT_STATUSES, applyPaidOrderFilter } from './dashboardService';
+
+const logSupabaseError = (error) => {
+  if (error) {
+    console.error(error.message, error.details, error.hint, error.code);
+  }
+};
+
+const normalizeOrderItem = (item) => {
+  if (!item) return item;
+  const qty = item.qty ?? item.quantity ?? 1;
+  return {
+    ...item,
+    qty,
+    quantity: qty,
+  };
+};
+
+const normalizeOrder = (order) => {
+  if (!order) return order;
+  const rawItems = Array.isArray(order.items)
+    ? order.items
+    : Array.isArray(order.order_items)
+      ? order.order_items
+      : [];
+  const items = rawItems.map(normalizeOrderItem);
+  return {
+    ...order,
+    customer_email: order.customer_email || order.email || order.user?.email || '',
+    customer_phone: order.customer_phone || order.phone || order.user?.phone || '',
+    items,
+  };
+};
 
 /**
  * Admin Order Service
@@ -16,8 +49,14 @@ export const getAllOrders = async (filters = {}) => {
         user:profiles(id, full_name, email),
         items:order_items(
           id,
-          quantity,
+          order_id,
+          product_id,
+          name,
+          size,
+          color,
+          qty,
           price,
+          image,
           product:products(id, name, images)
         )
       `)
@@ -29,7 +68,7 @@ export const getAllOrders = async (filters = {}) => {
     }
 
     if (filters.search) {
-      query = query.or(`order_number.ilike.%${filters.search}%,customer_email.ilike.%${filters.search}%`);
+      query = query.or(`order_number.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
     }
 
     if (filters.dateFrom) {
@@ -44,9 +83,9 @@ export const getAllOrders = async (filters = {}) => {
 
     if (error) throw error;
 
-    return { orders: data, error: null };
+    return { orders: (data || []).map(normalizeOrder), error: null };
   } catch (error) {
-    console.error('Get all orders error:', error);
+    logSupabaseError(error);
     return { orders: [], error: error.message };
   }
 };
@@ -61,10 +100,14 @@ export const getOrderDetails = async (orderId) => {
         user:profiles(id, full_name, email, phone),
         items:order_items(
           id,
-          quantity,
-          price,
+          order_id,
+          product_id,
+          name,
           size,
           color,
+          qty,
+          price,
+          image,
           product:products(id, name, images, sku)
         )
       `)
@@ -73,9 +116,9 @@ export const getOrderDetails = async (orderId) => {
 
     if (error) throw error;
 
-    return { order: data, error: null };
+    return { order: normalizeOrder(data), error: null };
   } catch (error) {
-    console.error('Get order details error:', error);
+    logSupabaseError(error);
     return { order: null, error: error.message };
   }
 };
@@ -111,7 +154,7 @@ export const updateOrderStatus = async (orderId, status, notes = null) => {
     // Send order status update email (don't fail operation if email fails)
     try {
       await sendOrderStatusEmail({
-        email: data.customer_email,
+        email: data.customer_email || data.email,
         orderNumber: data.order_number,
         customerName: data.customer_name,
         status: data.status,
@@ -123,9 +166,9 @@ export const updateOrderStatus = async (orderId, status, notes = null) => {
       // Continue with operation even if email fails
     }
 
-    return { order: data, error: null };
+    return { order: normalizeOrder(data), error: null };
   } catch (error) {
-    console.error('Update order status error:', error);
+    logSupabaseError(error);
     return { order: null, error: error.message };
   }
 };
@@ -146,9 +189,9 @@ export const updateTrackingInfo = async (orderId, trackingNumber, carrier) => {
 
     if (error) throw error;
 
-    return { order: data, error: null };
+    return { order: normalizeOrder(data), error: null };
   } catch (error) {
-    console.error('Update tracking info error:', error);
+    logSupabaseError(error);
     return { order: null, error: error.message };
   }
 };
@@ -161,11 +204,11 @@ export const getOrderStats = async () => {
       .from('orders')
       .select('*', { count: 'exact', head: true });
 
-    // Pending orders (ORDERED status)
+    // Pending (unpaid) orders
     const { count: pendingCount } = await supabase
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'ORDERED');
+      .eq('payment_status', 'PENDING');
 
     // Dispatched orders
     const { count: dispatchedCount } = await supabase
@@ -179,25 +222,27 @@ export const getOrderStats = async () => {
       .select('*', { count: 'exact', head: true })
       .eq('status', 'DELIVERED');
 
-    // Total revenue
-    const { data: revenueData } = await supabase
-      .from('orders')
-      .select('total')
-      .in('status', ['ORDERED', 'DISPATCHED', 'DELIVERED']);
+    // Total revenue (paid orders only)
+    const { data: revenueData, error: revErr } = await applyPaidOrderFilter(
+      supabase.from('orders').select('total')
+    );
+    if (revErr) logSupabaseError(revErr);
 
-    const totalRevenue = revenueData?.reduce((sum, order) => sum + order.total, 0) || 0;
+    const totalRevenue = revenueData?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
 
-    // Today's revenue
+    // Today's revenue (paid orders only)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const { data: todayRevenueData } = await supabase
-      .from('orders')
-      .select('total')
-      .gte('created_at', today.toISOString())
-      .in('status', ['ORDERED', 'DISPATCHED', 'DELIVERED']);
+    const { data: todayRevenueData, error: todayErr } = await applyPaidOrderFilter(
+      supabase
+        .from('orders')
+        .select('total')
+        .gte('created_at', today.toISOString())
+    );
+    if (todayErr) logSupabaseError(todayErr);
 
-    const todayRevenue = todayRevenueData?.reduce((sum, order) => sum + order.total, 0) || 0;
+    const todayRevenue = todayRevenueData?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
 
     return {
       stats: {
@@ -211,7 +256,7 @@ export const getOrderStats = async () => {
       error: null,
     };
   } catch (error) {
-    console.error('Get order stats error:', error);
+    logSupabaseError(error);
     return { stats: null, error: error.message };
   }
 };
@@ -230,9 +275,9 @@ export const getRecentOrders = async (limit = 10) => {
 
     if (error) throw error;
 
-    return { orders: data, error: null };
+    return { orders: (data || []).map(normalizeOrder), error: null };
   } catch (error) {
-    console.error('Get recent orders error:', error);
+    logSupabaseError(error);
     return { orders: [], error: error.message };
   }
 };
@@ -254,8 +299,8 @@ export const exportOrdersToCSV = (orders) => {
     order.order_number,
     new Date(order.created_at).toLocaleDateString(),
     order.customer_name,
-    order.customer_email,
-    `₦${order.total.toLocaleString()}`,
+    order.customer_email || order.email || '',
+    `₦${(order.total || 0).toLocaleString()}`,
     order.status,
     order.payment_method || 'N/A',
     order.tracking_number || 'N/A',
@@ -275,16 +320,16 @@ export const exportOrdersToCSV = (orders) => {
   window.URL.revokeObjectURL(url);
 };
 
-// Get revenue by date range
+// Get revenue by date range (paid orders only)
 export const getRevenueByDateRange = async (startDate, endDate) => {
   try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('created_at, total')
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
-      .in('status', ['ORDERED', 'DISPATCHED', 'DELIVERED'])
-      .order('created_at', { ascending: true });
+    const { data, error } = await applyPaidOrderFilter(
+      supabase
+        .from('orders')
+        .select('created_at, total')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+    ).order('created_at', { ascending: true });
 
     if (error) throw error;
 
@@ -292,44 +337,59 @@ export const getRevenueByDateRange = async (startDate, endDate) => {
     const revenueByDate = {};
     data?.forEach(order => {
       const date = new Date(order.created_at).toLocaleDateString();
-      revenueByDate[date] = (revenueByDate[date] || 0) + order.total;
+      revenueByDate[date] = (revenueByDate[date] || 0) + (order.total || 0);
     });
 
     return { revenueByDate, error: null };
   } catch (error) {
-    console.error('Get revenue by date range error:', error);
+    logSupabaseError(error);
     return { revenueByDate: {}, error: error.message };
   }
 };
 
-// Get top selling products
+// Get top selling products (items from paid orders only)
 export const getTopSellingProducts = async (limit = 10) => {
   try {
     const { data, error } = await supabase
       .from('order_items')
       .select(`
         product_id,
-        quantity,
+        name,
+        image,
+        qty,
+        price,
+        order:orders!inner(payment_status, status),
         product:products(id, name, images, price)
-      `);
+      `)
+      .eq('order.payment_status', PAID_PAYMENT_STATUS)
+      .in('order.status', VALID_FULFILLMENT_STATUSES);
 
     if (error) throw error;
 
     // Aggregate by product
     const productSales = {};
     data?.forEach(item => {
-      if (!item.product) return;
-      
-      const productId = item.product_id;
+      const productObj = item.product || (item.name ? {
+        id: item.product_id,
+        name: item.name,
+        images: item.image ? [item.image] : [],
+        price: item.price,
+      } : null);
+      if (!productObj) return;
+      const qty = item.qty ?? item.quantity ?? 0;
+      const unitPrice = item.price ?? productObj.price ?? 0;
+      const productId = item.product_id || item.name;
       if (!productSales[productId]) {
         productSales[productId] = {
-          product: item.product,
+          product: productObj,
           totalQuantity: 0,
+          quantity: 0,
           totalRevenue: 0,
         };
       }
-      productSales[productId].totalQuantity += item.quantity;
-      productSales[productId].totalRevenue += item.quantity * item.product.price;
+      productSales[productId].totalQuantity += qty;
+      productSales[productId].quantity += qty;
+      productSales[productId].totalRevenue += qty * unitPrice;
     });
 
     // Convert to array and sort
@@ -339,7 +399,7 @@ export const getTopSellingProducts = async (limit = 10) => {
 
     return { products: topProducts, error: null };
   } catch (error) {
-    console.error('Get top selling products error:', error);
+    logSupabaseError(error);
     return { products: [], error: error.message };
   }
 };
@@ -367,7 +427,7 @@ export const bulkUpdateOrderStatus = async (orderIds, status) => {
 
     return { success: true, error: null };
   } catch (error) {
-    console.error('Bulk update order status error:', error);
+    logSupabaseError(error);
     return { success: false, error: error.message };
   }
 };

@@ -7,6 +7,7 @@ import { getAllCollections } from '../../services/admin/collectionAdminService';
 import { toast } from '../../components/ui/ToastProvider';
 import { useSiteStore } from '../../store/useSiteStore';
 import { PRESET_COLORS, resolveSwatchColor, needsSwatchBorder } from '../../utils/colors';
+import { getEffectivePrice, clampPercent } from '../../utils/pricing';
 
 const STEPS = [
   { id: 1, label: 'Basic Info',  desc: 'Name, category, collection' },
@@ -84,6 +85,7 @@ export default function ProductEditor({ product, onClose, onSave }) {
   const [productId]             = useState(() => product?.id || crypto.randomUUID());
   const [removingBgIndex, setRemovingBgIndex] = useState(null);
   const [bgProgress, setBgProgress] = useState(0);
+  const storeSale = useSiteStore(state => state.storeSale);
   const fileInputRef = useRef();
 
   const videoInputRef = useRef();
@@ -103,6 +105,7 @@ export default function ProductEditor({ product, onClose, onSave }) {
     images: [], video_url: '',
     sizes: [], colors: [],
     price: '', compare_price: '', stock: '',
+    discount_enabled: false, discount_percent: '', sale_excluded: false,
     is_new: false, is_featured: false, is_best_seller: false, is_limited_edition: false, status: 'ACTIVE',
   });
 
@@ -127,6 +130,9 @@ export default function ProductEditor({ product, onClose, onSave }) {
         price: product.price || '',
         compare_price: product.compare_price || '',
         stock: product.stock || '',
+        discount_enabled: Boolean(product.discount_enabled),
+        discount_percent: product.discount_percent ?? '',
+        sale_excluded: Boolean(product.sale_excluded),
         // Tags/badges are no longer editable here — carry existing values through unchanged
         is_new: product.is_new || false,
         is_featured: product.is_featured || false,
@@ -323,6 +329,12 @@ export default function ProductEditor({ product, onClose, onSave }) {
     if (step === 4) {
       if (!form.price || form.price <= 0) e.price = 'Valid price is required';
       if (form.stock === '' || form.stock < 0) e.stock = 'Stock quantity is required';
+      if (form.discount_enabled) {
+        const pct = Number(form.discount_percent);
+        if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
+          e.discount_percent = 'Discount percentage must be between 1 and 100';
+        }
+      }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -339,6 +351,9 @@ export default function ProductEditor({ product, onClose, onSave }) {
       price: parseFloat(form.price) || 0,
       compare_price: form.compare_price ? parseFloat(form.compare_price) : null,
       stock: parseInt(form.stock) || 0,
+      discount_enabled: Boolean(form.discount_enabled),
+      discount_percent: form.discount_enabled ? clampPercent(form.discount_percent) : 0,
+      sale_excluded: Boolean(form.sale_excluded),
       collection_id: form.collection_id || null,
       subcategory: form.subcategory || null,
       season: form.season || null,
@@ -618,7 +633,20 @@ export default function ProductEditor({ product, onClose, onSave }) {
           })()}
 
           {/* STEP 4 — Pricing */}
-          {step === 4 && (
+          {step === 4 && (() => {
+            const previewPricing = getEffectivePrice(
+              {
+                price: parseFloat(form.price) || 0,
+                compare_price: form.compare_price ? parseFloat(form.compare_price) : null,
+                subcategory: form.subcategory,
+                category: form.category,
+                discount_enabled: form.discount_enabled,
+                discount_percent: form.discount_percent,
+                sale_excluded: form.sale_excluded,
+              },
+              storeSale
+            );
+            return (
             <div className="max-w-2xl space-y-6">
               <div><h3 className="text-xl font-bold text-white">Pricing & Stock</h3><p className="text-white/30 text-sm mt-1">Set the price, compare price for sale display, and stock level.</p></div>
               <div className="grid grid-cols-2 gap-4">
@@ -629,6 +657,82 @@ export default function ProductEditor({ product, onClose, onSave }) {
                   <Input type="number" value={form.compare_price} onChange={e => set('compare_price', e.target.value)} placeholder="Shown as strikethrough" />
                 </Field>
               </div>
+
+              {/* Per-Product Discount & Store-Wide Exclusion */}
+              <div className="bg-[#141410] border border-white/[0.08] rounded-xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[12px] font-bold text-white">Discount</p>
+                    <p className="text-[11px] text-white/35">
+                      Apply an individual percentage discount to this product (overrides store-wide sale).
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={form.discount_enabled}
+                    onClick={() => set('discount_enabled', !form.discount_enabled)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+                      form.discount_enabled ? 'bg-[#c9a96e]' : 'bg-white/15'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-[#0a0a08] shadow transition duration-200 ${
+                        form.discount_enabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {form.discount_enabled && (
+                  <Field label="Discount Percentage (%)" required error={errors.discount_percent}>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={form.discount_percent}
+                      onChange={e => set('discount_percent', e.target.value)}
+                      placeholder="e.g. 25"
+                      error={errors.discount_percent}
+                    />
+                  </Field>
+                )}
+
+                <label className="flex items-center gap-2.5 pt-2 border-t border-white/[0.06] cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form.sale_excluded)}
+                    onChange={e => set('sale_excluded', e.target.checked)}
+                    className="w-4 h-4 accent-[#c9a96e] rounded"
+                  />
+                  <span className="text-[12px] text-white/75">
+                    Exclude from store-wide sale
+                  </span>
+                </label>
+
+                {/* Live Price Preview */}
+                <div className="bg-[#0a0a08] border border-white/[0.06] rounded-xl px-4 py-3 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+                    Live Price Preview
+                  </span>
+                  <div className="flex items-center gap-2.5">
+                    {previewPricing.isOnSale && (
+                      <>
+                        <span className="bg-[#4b0e1e] text-[#fcf9f3] text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                          -{previewPricing.discountPercent}%
+                        </span>
+                        <span className="text-[12px] text-white/35 line-through">
+                          ₦{previewPricing.originalPrice.toLocaleString()}
+                        </span>
+                      </>
+                    )}
+                    <span className="text-[14px] font-bold text-[#c9a96e]">
+                      ₦{previewPricing.finalPrice.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <Field label="Stock Quantity" required error={errors.stock}>
                 <Input type="number" value={form.stock} onChange={e => set('stock', e.target.value)} placeholder="0" error={errors.stock} />
               </Field>
@@ -648,7 +752,8 @@ export default function ProductEditor({ product, onClose, onSave }) {
                 </div>
               </Field>
             </div>
-          )}
+            );
+          })()}
 
           {/* STEP 5 — Preview */}
           {step === 5 && (
@@ -673,8 +778,33 @@ export default function ProductEditor({ product, onClose, onSave }) {
                     ].filter(Boolean).join(' · ')}
                   </p>
                   <div className="flex items-baseline gap-3">
-                    <p className="text-xl font-bold text-white">₦{form.price ? parseFloat(form.price).toLocaleString() : '0'}</p>
-                    {form.compare_price && <p className="text-[13px] text-white/30 line-through">₦{parseFloat(form.compare_price).toLocaleString()}</p>}
+                    {(() => {
+                      const eff = getEffectivePrice(
+                        {
+                          price: parseFloat(form.price) || 0,
+                          compare_price: form.compare_price ? parseFloat(form.compare_price) : null,
+                          subcategory: form.subcategory,
+                          category: form.category,
+                          discount_enabled: form.discount_enabled,
+                          discount_percent: form.discount_percent,
+                          sale_excluded: form.sale_excluded,
+                        },
+                        storeSale
+                      );
+                      return (
+                        <>
+                          <p className="text-xl font-bold text-white">₦{eff.finalPrice.toLocaleString()}</p>
+                          {eff.isOnSale && (
+                            <>
+                              <p className="text-[13px] text-white/30 line-through">₦{eff.originalPrice.toLocaleString()}</p>
+                              <span className="bg-[#4b0e1e] text-[#fcf9f3] text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                                -{eff.discountPercent}%
+                              </span>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                   <p className="text-[12px] text-white/40">Stock: {form.stock || 0} · {form.images.length} image{form.images.length !== 1 ? 's' : ''}</p>
                   {form.sizes.length > 0 && <p className="text-[11px] text-white/30">Sizes: {form.sizes.join(', ')}</p>}

@@ -14,8 +14,78 @@ import {
 import { uploadFile, compressImage, deleteFileByUrl, BUCKETS } from '../../services/storageService';
 import { toast } from '../../components/ui/ToastProvider';
 import { useSiteStore } from '../../store/useSiteStore';
+import HeroSlider from '../../components/home/HeroSlider';
 
 const isVideo = (name = '') => /\.(mp4|webm|mov)$/i.test(name) || name.includes('/video/');
+
+function getSlideFitAndPos(s) {
+  let fit = s?.objectFit || s?.object_fit || null;
+  let pos = s?.objectPosition || s?.object_position || null;
+  let sec = s?.duration_seconds ?? s?.duration ?? s?.seconds ?? null;
+  const tp = s?.textPosition || s?.text_position || '';
+  if (typeof tp === 'string' && tp.includes('|')) {
+    const [tpFit, tpPos, tpSec] = tp.split('|');
+    if (!fit && ['auto', 'cover', 'contain'].includes(tpFit)) fit = tpFit;
+    if (!pos && tpPos) pos = tpPos;
+    if ((sec === null || sec === undefined || sec === '') && tpSec) {
+      const parsed = Number(tpSec);
+      if (Number.isFinite(parsed) && parsed > 0) sec = parsed;
+    }
+  }
+  const numSec = Number(sec);
+  return {
+    fitMode: ['auto', 'cover', 'contain'].includes(fit) ? fit : 'auto',
+    focusPos: pos || 'top',
+    slideSeconds: Number.isFinite(numSec) && numSec > 0 ? numSec : null,
+  };
+}
+
+function mapFocusToCssPos(focusPos = 'top') {
+  switch (focusPos) {
+    case 'top':
+      return 'center top';
+    case 'bottom':
+      return 'center bottom';
+    case 'left':
+      return 'left center';
+    case 'right':
+      return 'right center';
+    case 'center':
+      return 'center center';
+    default:
+      return focusPos || 'center top';
+  }
+}
+
+function shouldAutoCover(mediaRatio, containerRatio, containerWidth = 1440) {
+  if (!mediaRatio || !containerRatio || mediaRatio <= 0 || containerRatio <= 0) {
+    return false;
+  }
+  if (Math.abs(mediaRatio - containerRatio) / containerRatio <= 0.20) {
+    return true;
+  }
+  if (mediaRatio >= containerRatio && mediaRatio <= 2.0) {
+    return true;
+  }
+  if (containerWidth > 0 && containerWidth <= 640 && containerRatio < 1 && mediaRatio >= 0.5 && mediaRatio <= 1.0) {
+    return true;
+  }
+  return false;
+}
+
+function resolveSlideFit(fitMode, focusPos, mediaRatio, containerRatio, containerWidth = 1440) {
+  const cssFocus = mapFocusToCssPos(focusPos);
+  if (fitMode === 'cover') {
+    return { objectFit: 'cover', objectPosition: cssFocus, useBackdrop: false };
+  }
+  if (fitMode === 'contain') {
+    return { objectFit: 'contain', objectPosition: 'center', useBackdrop: true };
+  }
+  const cover = shouldAutoCover(mediaRatio, containerRatio, containerWidth);
+  return cover
+    ? { objectFit: 'cover', objectPosition: cssFocus, useBackdrop: false }
+    : { objectFit: 'contain', objectPosition: 'center', useBackdrop: true };
+}
 
 // Matches the slugs/titles in src/pages/CategoryPage.jsx's CATEGORY_META
 const CATEGORY_BANNER_SLUGS = [
@@ -34,7 +104,7 @@ export default function HomepageManager() {
   const [slides, setSlides] = useState([]);
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { products, collections, partnerships, categoryBanners } = useSiteStore();
+  const { products, collections, partnerships, categoryBanners, setHeroSlides } = useSiteStore();
 
   const [activeEditor, setActiveEditor] = useState(null);
 
@@ -48,9 +118,19 @@ export default function HomepageManager() {
       getHomepageSectionsAdmin(),
     ]);
     setConfig(cfg || {});
+    if (cfg?.hero_speed !== undefined && cfg?.hero_speed !== null) {
+      useSiteStore.setState({ heroSpeed: Number(cfg.hero_speed) || 5 });
+    }
     setSlides(sl || []);
+    setHeroSlides(sl || []);
     setSections(sec || []);
     setLoading(false);
+  };
+
+  const reloadSlides = async () => {
+    const { data: sl } = await getHeroSlides();
+    setSlides(sl || []);
+    setHeroSlides(sl || []);
   };
 
   const saveConfig = async (key, data) => {
@@ -76,6 +156,9 @@ export default function HomepageManager() {
     if (error) toast(error, 'error'); 
     else { 
       toast('Saved successfully!', 'success'); 
+      if (updates.hero_speed !== undefined) {
+        useSiteStore.setState({ heroSpeed: Number(updates.hero_speed) || 5 });
+      }
       setConfig(p => {
         const updatedSections = { ...(p?.sections || {}), ...updates };
         return {
@@ -113,11 +196,17 @@ export default function HomepageManager() {
         {/* ── Section 1: HERO — tall portrait like YL ── */}
         <div 
           onClick={() => setActiveEditor('hero')}
-          className="relative w-full bg-[#1c1c18] cursor-pointer group flex items-center justify-center border-b border-white/10"
+          className="relative w-full bg-[#1c1c18] cursor-pointer group flex items-center justify-center border-b border-white/10 overflow-hidden"
           style={{ aspectRatio: '4/5', maxHeight: '500px' }}
         >
           {slides.length > 0 ? (
-            <img src={slides[0]?.image} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" alt="Hero" />
+            <div className="absolute inset-0 w-full h-full">
+              <HeroSlider
+                showAdminInfo={true}
+                speedOverride={config?.hero_speed}
+                containerStyle={{ height: '100%' }}
+              />
+            </div>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center flex-col opacity-60">
               <ImageIcon size={40} className="text-white/20 mb-3" />
@@ -126,10 +215,10 @@ export default function HomepageManager() {
             </div>
           )}
           {/* Section Label */}
-          <div className="absolute top-4 left-4 bg-black/60 text-white/60 text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 z-10">
-            1. HERO CAROUSEL ({slides.length} images)
+          <div className="absolute top-4 left-4 bg-black/60 text-white/60 text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 z-20 pointer-events-none">
+            1. HERO CAROUSEL ({slides.length} slides)
           </div>
-          <div className="relative z-10 flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity translate-y-4 group-hover:translate-y-0 duration-300">
+          <div className="relative z-20 flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity translate-y-4 group-hover:translate-y-0 duration-300">
             <button className="bg-white text-black px-6 py-2.5 font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl">
               <Edit2 size={14} /> Edit Hero Carousel ({slides.length} slides)
             </button>
@@ -389,7 +478,7 @@ export default function HomepageManager() {
           slides={slides} 
           config={config}
           setSlides={setSlides} 
-          reload={load} 
+          reload={reloadSlides} 
           onSaveConfig={saveMultipleConfig}
           onClose={() => setActiveEditor(null)} 
         />
@@ -466,10 +555,18 @@ function ModalWrapper({ title, onClose, children }) {
 
 function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onClose }) {
   const [uploading, setUploading] = useState(false);
+  const [uploadingPoster, setUploadingPoster] = useState(false);
+  const [uiError, setUiError] = useState('');
   const [activeTab, setActiveTab] = useState('slides'); 
   const fileRef = useRef();
+  const posterRef = useRef();
+  const previewVideoRef = useRef(null);
+  const previewCanvasRef = useRef(null);
 
   const [slideDraft, setSlideDraft] = useState(null);
+  const [draftMediaDims, setDraftMediaDims] = useState(null);
+  const [previewDevice, setPreviewDevice] = useState('desktop');
+  const [previewNoCors, setPreviewNoCors] = useState(false);
   const [savingSlide, setSavingSlide] = useState(false);
 
   const [settings, setSettings] = useState({
@@ -477,56 +574,325 @@ function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onCl
     hero_speed: config?.hero_speed || 5,
   });
 
+  const MIME_BY_EXT = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    mov: 'video/quicktime',
+  };
+  const MAX_VIDEO_BYTES = 104857600; // 100MB
+
+  const drawPreviewBackdrop = () => {
+    const videoEl = previewVideoRef.current;
+    const canvasEl = previewCanvasRef.current;
+    if (!videoEl || !canvasEl || videoEl.readyState < 2) return;
+    try {
+      const ctx = canvasEl.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+    } catch {
+      // Poster / dark background fallback behind canvas remains visible
+    }
+  };
+
+  useEffect(() => {
+    if (!slideDraft) return;
+    const timer = setInterval(drawPreviewBackdrop, 80);
+    return () => clearInterval(timer);
+  }, [slideDraft]);
+
+  const captureVideoPosterFrame = (file) =>
+    new Promise((resolve) => {
+      try {
+        const objectUrl = URL.createObjectURL(file);
+        const video = document.createElement('video');
+        video.preload = 'auto';
+        video.muted = true;
+        video.playsInline = true;
+        let settled = false;
+        const cleanup = () => {
+          URL.revokeObjectURL(objectUrl);
+          video.removeAttribute('src');
+          video.load?.();
+        };
+        const finish = (res) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          resolve(res);
+        };
+        const timer = setTimeout(() => finish(null), 8000);
+        video.onerror = () => {
+          clearTimeout(timer);
+          finish(null);
+        };
+        video.onloadedmetadata = () => {
+          const vw = video.videoWidth;
+          const vh = video.videoHeight;
+          if (vw && vh) {
+            setDraftMediaDims({ width: vw, height: vh });
+          }
+          const targetTime =
+            video.duration && video.duration > 0.6
+              ? 0.5
+              : Math.min(0.1, (video.duration || 0) / 2);
+          video.currentTime = targetTime;
+        };
+        video.onseeked = () => {
+          try {
+            const vw = video.videoWidth || 1280;
+            const vh = video.videoHeight || 720;
+            const maxDim = 1280;
+            const scale = Math.min(1, maxDim / Math.max(vw, vh));
+            const cw = Math.max(1, Math.round(vw * scale));
+            const ch = Math.max(1, Math.round(vh * scale));
+            const canvas = document.createElement('canvas');
+            canvas.width = cw;
+            canvas.height = ch;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, cw, ch);
+            canvas.toBlob(
+              (blob) => {
+                clearTimeout(timer);
+                if (!blob) return finish(null);
+                const baseName = (file.name || 'video').replace(/\.[^.]+$/, '');
+                const posterFile = new File([blob], `${baseName}-poster.jpg`, {
+                  type: 'image/jpeg',
+                });
+                finish(posterFile);
+              },
+              'image/jpeg',
+              0.85
+            );
+          } catch {
+            clearTimeout(timer);
+            finish(null);
+          }
+        };
+        video.src = objectUrl;
+      } catch {
+        resolve(null);
+      }
+    });
+
   const uploadImg = async (files) => {
-    if (!files?.length) return;
+    const file = files?.[0];
+    if (fileRef.current) fileRef.current.value = '';
+    if (!file) return;
+    setUiError('');
+
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const resolvedType = (file.type || MIME_BY_EXT[ext] || '').toLowerCase();
+    const isVideoFile = resolvedType.startsWith('video/') || ['mp4', 'webm', 'mov'].includes(ext);
+    const isImageFile = resolvedType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp'].includes(ext);
+
+    if (!isVideoFile && !isImageFile) {
+      const msg = `Unsupported file "${file.name}". Allowed: JPG, PNG, WebP, MP4, WebM, MOV.`;
+      setUiError(msg);
+      toast(msg, 'error');
+      return;
+    }
+
+    if (isVideoFile && file.size > MAX_VIDEO_BYTES) {
+      const sizeMB = (file.size / 1048576).toFixed(1);
+      const msg = `"${file.name}" is ${sizeMB} MB (${file.size} bytes). Max allowed video size is 100 MB (104857600 bytes).`;
+      setUiError(msg);
+      toast(msg, 'error');
+      return;
+    }
+
     setUploading(true);
-    const isVideoFile = isVideo(files[0].name) || files[0].type.startsWith('video/');
     toast(isVideoFile ? 'Uploading video...' : 'Compressing and uploading image...', 'info');
     
     try {
-      let fileToUpload = files[0];
+      let fileToUpload = file;
       if (!isVideoFile) {
-        fileToUpload = await compressImage(files[0], 1920, 0.8);
+        fileToUpload = await compressImage(file, 1920, 0.8);
       }
+      const contentType = fileToUpload.type || MIME_BY_EXT[ext] || undefined;
       
-      const { url } = await uploadFile(fileToUpload, { bucket: BUCKETS.HERO_SLIDES, folder: 'hero' });
-      if (url) {
-        if (slideDraft) {
-          setSlideDraft({ ...slideDraft, image: url });
+      const { url, error } = await uploadFile(fileToUpload, {
+        bucket: BUCKETS.HERO_SLIDES,
+        folder: 'hero',
+        contentType,
+      });
+      if (error || !url) {
+        const msg = error || 'Upload failed.';
+        setUiError(msg);
+        toast(msg, 'error');
+      } else {
+        setDraftMediaDims(null);
+        setPreviewNoCors(false);
+        const base = slideDraft || {
+          headline: '',
+          subheadline: '',
+          ctaLabel: '',
+          ctaLink: '',
+          textPosition: 'auto|top',
+          objectFit: 'auto',
+          objectPosition: 'top',
+        };
+        if (isVideoFile) {
+          let autoPosterUrl = base.poster_url || null;
+          if (!autoPosterUrl) {
+            const posterFile = await captureVideoPosterFrame(file);
+            if (posterFile) {
+              const { url: pUrl } = await uploadFile(posterFile, {
+                bucket: BUCKETS.HERO_SLIDES,
+                folder: 'hero',
+                contentType: 'image/jpeg',
+              });
+              if (pUrl) autoPosterUrl = pUrl;
+            }
+          }
+          setSlideDraft({
+            ...base,
+            media_type: 'video',
+            video_url: url,
+            poster_url: autoPosterUrl,
+            image: autoPosterUrl || url,
+          });
         } else {
-          setSlideDraft({ image: url, headline: '', subheadline: '', ctaLabel: '', ctaLink: '', textPosition: 'center', objectFit: 'cover' });
+          setSlideDraft({
+            ...base,
+            media_type: 'image',
+            image: url,
+            video_url: null,
+          });
         }
       }
     } catch (err) {
-      toast('Upload failed.', 'error');
+      const msg = err?.message || 'Upload failed.';
+      setUiError(msg);
+      toast(msg, 'error');
     }
     
     setUploading(false);
   };
 
-  const saveSlide = async () => {
-    setSavingSlide(true);
-    if (slideDraft.id) {
-      await updateHeroSlide(slideDraft.id, slideDraft);
-      toast('Slide updated!', 'success');
-    } else {
-      await createHeroSlide(slideDraft);
-      toast('Slide added!', 'success');
+  const uploadPoster = async (files) => {
+    const file = files?.[0];
+    if (posterRef.current) posterRef.current.value = '';
+    if (!file || !slideDraft) return;
+    setUiError('');
+    setUploadingPoster(true);
+    try {
+      const compressed = await compressImage(file, 1920, 0.8);
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      const { url, error } = await uploadFile(compressed, {
+        bucket: BUCKETS.HERO_SLIDES,
+        folder: 'hero',
+        contentType: compressed.type || MIME_BY_EXT[ext] || 'image/jpeg',
+      });
+      if (error || !url) {
+        const msg = error || 'Poster upload failed.';
+        setUiError(msg);
+        toast(msg, 'error');
+      } else {
+        setSlideDraft(prev => ({ ...prev, poster_url: url, image: url }));
+        toast('Poster uploaded!', 'success');
+      }
+    } catch (err) {
+      const msg = err?.message || 'Poster upload failed.';
+      setUiError(msg);
+      toast(msg, 'error');
     }
-    setSavingSlide(false);
-    setSlideDraft(null);
-    reload();
+    setUploadingPoster(false);
   };
 
-  const removeSlide = async (id) => {
-    await deleteHeroSlide(id);
+  const openEditSlide = (sl) => {
+    setUiError('');
+    setDraftMediaDims(null);
+    setPreviewNoCors(false);
+    const { fitMode, focusPos, slideSeconds } = getSlideFitAndPos(sl);
+    setSlideDraft({
+      ...sl,
+      media_type: sl.media_type === 'video' || isVideo(sl.video_url || sl.image) ? 'video' : 'image',
+      video_url: sl.video_url || (isVideo(sl.image) ? sl.image : null),
+      poster_url: sl.poster_url || null,
+      ctaLabel: sl.ctaLabel ?? sl.cta_label ?? '',
+      ctaLink: sl.ctaLink ?? sl.cta_link ?? '',
+      objectFit: fitMode,
+      objectPosition: focusPos,
+      slideSeconds: slideSeconds ?? '',
+      textPosition: slideSeconds ? `${fitMode}|${focusPos}|${slideSeconds}` : `${fitMode}|${focusPos}`,
+    });
+  };
+
+  const saveSlide = async () => {
+    if (uploading || uploadingPoster) return;
+    setUiError('');
+    setSavingSlide(true);
+    const fitMode = slideDraft.objectFit || 'auto';
+    const focusPos = slideDraft.objectPosition || 'top';
+    const rawSec = Number(slideDraft.slideSeconds);
+    const validSec = Number.isFinite(rawSec) && rawSec > 0 ? Math.min(Math.max(Math.round(rawSec), 1), 120) : null;
+    const payload = {
+      ...slideDraft,
+      objectFit: fitMode,
+      objectPosition: focusPos,
+      textPosition: validSec ? `${fitMode}|${focusPos}|${validSec}` : `${fitMode}|${focusPos}`,
+    };
+    const { error } = payload.id
+      ? await updateHeroSlide(payload.id, payload)
+      : await createHeroSlide(payload);
+    setSavingSlide(false);
+
+    if (error) {
+      setUiError(error);
+      toast(error, 'error');
+      return;
+    }
+
+    toast(slideDraft.id ? 'Slide updated!' : 'Slide added!', 'success');
+    setSlideDraft(null);
+    await reload();
+  };
+
+  const removeSlide = async (sl) => {
+    setUiError('');
+    const { error } = await deleteHeroSlide(sl.id);
+    if (error) {
+      setUiError(error);
+      toast(error, 'error');
+      return;
+    }
+    // Also clean up storage file(s) if stored in Supabase Storage
+    const urls = new Set([sl.video_url, sl.poster_url, sl.image].filter(Boolean));
+    for (const u of urls) {
+      if (u.includes('/storage/v1/object/public/')) {
+        await deleteFileByUrl(u);
+      }
+    }
     toast('Slide removed', 'success');
-    reload();
+    await reload();
   };
 
   const handleSaveSettings = () => {
     onSaveConfig(settings);
   };
+
+  const isDraftVideo = slideDraft?.media_type === 'video' || isVideo(slideDraft?.video_url || slideDraft?.image);
+  const previewContainerRatio = previewDevice === 'mobile' ? (390 / 500) : (1440 / 1400);
+  const previewContainerWidth = previewDevice === 'mobile' ? 390 : 1440;
+  const previewAspectCss = previewDevice === 'mobile' ? '390 / 500' : '1440 / 1400';
+  const recommendedSizeLabel = previewDevice === 'mobile' ? '1080 x 1350' : '1920 x 1400';
+  const draftMediaRatio = draftMediaDims?.width && draftMediaDims?.height ? draftMediaDims.width / draftMediaDims.height : null;
+
+  const draftFitMode = slideDraft?.objectFit || 'auto';
+  const draftFocusPos = slideDraft?.objectPosition || 'top';
+  const {
+    objectFit: draftEffectiveFit,
+    objectPosition: draftEffectivePos,
+    useBackdrop: draftShowBackdrop,
+  } = resolveSlideFit(draftFitMode, draftFocusPos, draftMediaRatio, previewContainerRatio, previewContainerWidth);
+
+  const isRatioDiffOver20 =
+    draftMediaRatio !== null &&
+    Math.abs(draftMediaRatio - previewContainerRatio) / previewContainerRatio > 0.20;
 
   return (
     <ModalWrapper title="Edit Hero Carousel" onClose={onClose}>
@@ -548,44 +914,164 @@ function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onCl
         </div>
       )}
 
+      {uiError && (
+        <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-4">
+          {uiError}
+        </p>
+      )}
+
       {slideDraft ? (
         <div className="space-y-4">
-          <button onClick={() => setSlideDraft(null)} className="text-xs text-white/50 hover:text-white flex items-center gap-1 mb-2">
-            ← Back to list
-          </button>
+          <div className="flex items-center justify-between mb-2">
+            <button onClick={() => { setUiError(''); setDraftMediaDims(null); setSlideDraft(null); }} className="text-xs text-white/50 hover:text-white flex items-center gap-1">
+              ← Back to list
+            </button>
+            <div className="flex items-center gap-1 bg-[#141410] border border-white/10 rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={() => setPreviewDevice('desktop')}
+                className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded transition-colors ${
+                  previewDevice === 'desktop' ? 'bg-white text-black' : 'text-white/50 hover:text-white'
+                }`}
+              >
+                Desktop
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewDevice('mobile')}
+                className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest rounded transition-colors ${
+                  previewDevice === 'mobile' ? 'bg-white text-black' : 'text-white/50 hover:text-white'
+                }`}
+              >
+                Mobile
+              </button>
+            </div>
+          </div>
           
           <div onClick={() => !uploading && fileRef.current?.click()}
             className={`border-2 border-dashed border-white/10 bg-white/[0.02] rounded-xl p-4 text-center ${uploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-white/30 hover:bg-white/[0.04]'} transition-all overflow-hidden relative`}>
             {uploading ? (
               <div className="py-6 flex flex-col items-center justify-center">
                 <Loader2 className="animate-spin text-white/50 mb-2" size={24} />
-                <p className="text-[13px] font-semibold text-white/80">Uploading Image...</p>
+                <p className="text-[13px] font-semibold text-white/80">Uploading...</p>
               </div>
-            ) : slideDraft.image ? (
-               isVideo(slideDraft.image) ? (
-                 <video src={slideDraft.image} className={`w-full h-32 object-${slideDraft.objectFit || 'cover'} opacity-80`} style={{ objectPosition: slideDraft.objectPosition || 'top' }} muted autoPlay loop />
-               ) : (
-                 <img src={slideDraft.image} className={`w-full h-32 object-${slideDraft.objectFit || 'cover'} opacity-80`} style={{ objectPosition: slideDraft.objectPosition || 'top' }} alt="Preview" />
-               )
+            ) : (slideDraft.video_url || slideDraft.image) ? (
+               <div
+                 className={`w-full ${previewDevice === 'mobile' ? 'max-w-[200px]' : 'max-w-[260px]'} mx-auto rounded-lg overflow-hidden relative bg-[#1c1c18]`}
+                 style={{ aspectRatio: previewAspectCss }}
+               >
+                 {draftShowBackdrop && (!isDraftVideo || slideDraft.poster_url) && (
+                   <img
+                     src={isDraftVideo ? slideDraft.poster_url : slideDraft.image}
+                     alt=""
+                     aria-hidden="true"
+                     className="hero-media-backdrop"
+                   />
+                 )}
+                 {draftShowBackdrop && isDraftVideo && (
+                   <canvas
+                     ref={previewCanvasRef}
+                     width={64}
+                     height={36}
+                     aria-hidden="true"
+                     className="hero-media-backdrop"
+                   />
+                 )}
+                 {isDraftVideo ? (
+                   <video
+                     ref={previewVideoRef}
+                     src={slideDraft.video_url || slideDraft.image}
+                     crossOrigin={previewNoCors ? undefined : 'anonymous'}
+                     poster={slideDraft.poster_url || undefined}
+                     preload="metadata"
+                     onLoadedMetadata={(e) => {
+                       const vw = e.currentTarget.videoWidth;
+                       const vh = e.currentTarget.videoHeight;
+                       if (vw && vh) setDraftMediaDims({ width: vw, height: vh });
+                       drawPreviewBackdrop();
+                     }}
+                     onLoadedData={drawPreviewBackdrop}
+                     onCanPlay={drawPreviewBackdrop}
+                     onPlay={drawPreviewBackdrop}
+                     onError={() => {
+                       if (!previewNoCors) setPreviewNoCors(true);
+                     }}
+                     className="hero-media-foreground"
+                     style={{ objectFit: draftEffectiveFit, objectPosition: draftEffectivePos }}
+                     muted autoPlay loop playsInline
+                   />
+                 ) : (
+                   <img
+                     src={slideDraft.image}
+                     onLoad={(e) => {
+                       const nw = e.currentTarget.naturalWidth;
+                       const nh = e.currentTarget.naturalHeight;
+                       if (nw && nh) setDraftMediaDims({ width: nw, height: nh });
+                     }}
+                     className="hero-media-foreground"
+                     style={{ objectFit: draftEffectiveFit, objectPosition: draftEffectivePos }}
+                     alt="Preview"
+                   />
+                 )}
+                 <div className="absolute bottom-2 right-2 z-20 bg-black/70 backdrop-blur-sm border border-white/15 px-2 py-1 rounded pointer-events-none">
+                   <span className="font-grotesk text-[9px] font-bold uppercase tracking-[0.14em] text-[#fcf9f3] tabular-nums">
+                     Slide {slideDraft.id ? Math.max(1, slides.findIndex(s => s.id === slideDraft.id) + 1) : slides.length + 1} of {slideDraft.id ? slides.length : slides.length + 1} · {Number(slideDraft.slideSeconds) > 0 ? Math.round(Number(slideDraft.slideSeconds)) : (Number(settings.hero_speed) || 5)}s
+                   </span>
+                 </div>
+               </div>
             ) : (
               <div className="py-6">
                 <Upload size={24} className="text-white/30 mx-auto mb-3" />
                 <p className="text-[13px] font-semibold text-white/80">Click to change media</p>
               </div>
             )}
-            <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={e => uploadImg(e.target.files)} />
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" className="hidden" onChange={e => uploadImg(e.target.files)} />
           </div>
+
+          {isRatioDiffOver20 && (
+            <p className="text-[11px] text-amber-200/80 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+              Shown in full with a blurred background. For a full-bleed look, use a {recommendedSizeLabel} file, or choose Fill edge-to-edge.
+            </p>
+          )}
+
+          {isDraftVideo && (
+            <div className="flex items-center justify-between gap-3 bg-[#141410] border border-white/10 rounded-xl px-3 py-2.5">
+              <div className="flex items-center gap-3 min-w-0">
+                {slideDraft.poster_url && (
+                  <img src={slideDraft.poster_url} alt="Poster" className="w-10 h-10 object-cover rounded shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Video Poster Image (Optional)</p>
+                  <p className="text-[10px] text-white/30 truncate">{slideDraft.poster_url ? slideDraft.poster_url.split('/').pop() : 'No poster set'}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={uploadingPoster}
+                onClick={() => posterRef.current?.click()}
+                className="shrink-0 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-white/10 hover:bg-white/20 text-white rounded-lg disabled:opacity-50"
+              >
+                {uploadingPoster ? 'Uploading...' : slideDraft.poster_url ? 'Change Poster' : 'Upload Poster'}
+              </button>
+              <input ref={posterRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => uploadPoster(e.target.files)} />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-4">
             <div>
                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Image Fit</label>
                <select 
-                 value={slideDraft.objectFit || 'cover'} 
-                 onChange={e => setSlideDraft({...slideDraft, objectFit: e.target.value})}
+                 value={slideDraft.objectFit || 'auto'} 
+                 onChange={e => {
+                   const nextFit = e.target.value;
+                   const nextPos = slideDraft.objectPosition || 'top';
+                   setSlideDraft({ ...slideDraft, objectFit: nextFit, textPosition: `${nextFit}|${nextPos}` });
+                 }}
                  className="w-full bg-[#141410] border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white outline-none"
                >
-                 <option value="cover">Fill Area Edge-to-Edge (Cropped)</option>
-                 <option value="contain">Show Full Image (Uncropped, leaves gaps)</option>
+                 <option value="auto">Auto (recommended)</option>
+                 <option value="cover">Fill edge-to-edge (cropped)</option>
+                 <option value="contain">Show whole (blurred background)</option>
                </select>
             </div>
             <div>
@@ -593,7 +1079,11 @@ function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onCl
                <p className="text-[9px] text-white/30 mb-2">Choose which part of the image stays visible when it fills the screen</p>
                <select 
                  value={slideDraft.objectPosition || 'top'} 
-                 onChange={e => setSlideDraft({...slideDraft, objectPosition: e.target.value})}
+                 onChange={e => {
+                   const nextPos = e.target.value;
+                   const nextFit = slideDraft.objectFit || 'auto';
+                   setSlideDraft({ ...slideDraft, objectPosition: nextPos, textPosition: `${nextFit}|${nextPos}` });
+                 }}
                  className="w-full bg-[#141410] border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white outline-none"
                >
                  <option value="top">Top (Best for faces/heads)</option>
@@ -602,6 +1092,18 @@ function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onCl
                  <option value="left">Left</option>
                  <option value="right">Right</option>
                </select>
+            </div>
+            <div>
+               <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Slide Duration (Seconds, Optional)</label>
+               <input
+                 type="number"
+                 min="1"
+                 max="120"
+                 value={slideDraft.slideSeconds ?? ''}
+                 onChange={e => setSlideDraft({ ...slideDraft, slideSeconds: e.target.value })}
+                 className="w-full bg-[#141410] border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white outline-none"
+                 placeholder={`Uses global speed (${settings.hero_speed || 5}s)`}
+               />
             </div>
             <div>
                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Headline (Optional)</label>
@@ -623,8 +1125,8 @@ function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onCl
             </div>
           </div>
           
-          <button onClick={saveSlide} disabled={savingSlide || uploading} className="w-full py-3 mt-4 bg-white text-black rounded-xl text-[12px] font-bold hover:bg-white/90 transition-colors disabled:opacity-50">
-            {savingSlide ? 'Saving...' : 'Save Slide'}
+          <button onClick={saveSlide} disabled={savingSlide || uploading || uploadingPoster} className="w-full py-3 mt-4 bg-white text-black rounded-xl text-[12px] font-bold hover:bg-white/90 transition-colors disabled:opacity-50">
+            {uploading || uploadingPoster ? 'Uploading...' : savingSlide ? 'Saving...' : 'Save Slide'}
           </button>
         </div>
       ) : activeTab === 'slides' ? (
@@ -634,44 +1136,69 @@ function HeroEditorModal({ slides, config, setSlides, reload, onSaveConfig, onCl
             {uploading ? (
               <div className="flex flex-col items-center justify-center">
                 <Loader2 className="animate-spin text-white/50 mb-3" size={24} />
-                <p className="text-[13px] font-semibold text-white/80">Uploading Image...</p>
+                <p className="text-[13px] font-semibold text-white/80">Uploading...</p>
               </div>
             ) : (
               <>
                 <Upload size={24} className="text-white/30 mx-auto mb-3" />
                 <p className="text-[13px] font-semibold text-white/80">Click to add a new slide</p>
-                <p className="text-[11px] text-white/40 mt-1">Recommended format: JPG/PNG</p>
+                <p className="text-[11px] text-white/40 mt-1">Best size: 1920 x 1400 (desktop) / 1080 x 1350 (mobile). Images: JPG/PNG. Video: MP4/WebM (max 100MB).</p>
               </>
             )}
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => uploadImg(e.target.files)} />
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" className="hidden" onChange={e => uploadImg(e.target.files)} />
           </div>
 
           <div className="space-y-2 mt-6">
             <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Current Slides ({slides.length})</p>
             {slides.length === 0 && <p className="text-white/30 text-sm py-4">No slides yet.</p>}
-            {slides.map((sl) => (
-              <div key={sl.id} className="flex items-center gap-4 bg-[#141410] border border-white/10 rounded-xl p-3">
-                <div className="w-20 h-12 rounded overflow-hidden shrink-0 bg-black flex items-center justify-center">
-                  {isVideo(sl.image) ? (
-                    <video src={sl.image} className={`w-full h-full object-${sl.objectFit || 'cover'}`} muted />
-                  ) : (
-                    <img src={sl.image} alt="" className={`w-full h-full object-${sl.objectFit || 'cover'}`} />
-                  )}
+            {slides.map((sl, slIdx) => {
+              const slideIsVideo = sl.media_type === 'video' || isVideo(sl.video_url || sl.image);
+              const mediaUrl = sl.video_url || sl.image || '';
+              const { slideSeconds: slSec } = getSlideFitAndPos(sl);
+              const effectiveSec = slSec || Number(settings.hero_speed) || 5;
+              return (
+                <div key={sl.id} className="flex items-center gap-4 bg-[#141410] border border-white/10 rounded-xl p-3">
+                  <div className="relative w-20 h-12 rounded overflow-hidden shrink-0 bg-black flex items-center justify-center">
+                    {slideIsVideo ? (
+                      sl.poster_url ? (
+                        <img src={sl.poster_url} alt="" className={`w-full h-full object-${sl.objectFit || 'cover'}`} />
+                      ) : (
+                        <video src={mediaUrl} preload="metadata" className={`w-full h-full object-${sl.objectFit || 'cover'}`} muted playsInline />
+                      )
+                    ) : (
+                      <img src={sl.image} alt="" className={`w-full h-full object-${sl.objectFit || 'cover'}`} />
+                    )}
+                    {slideIsVideo && (
+                      <span className="absolute top-1 left-1 bg-black/80 text-white text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                        VIDEO
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 text-[11px] text-white/80 truncate">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold truncate">{sl.headline || 'No Text'}</span>
+                      {slideIsVideo && (
+                        <span className="shrink-0 bg-white/10 text-white/80 text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded">
+                          VIDEO
+                        </span>
+                      )}
+                      <span className="shrink-0 bg-white/5 text-white/60 text-[9px] font-semibold px-1.5 py-0.5 rounded tabular-nums">
+                        Slide {slIdx + 1} of {slides.length} · {effectiveSec}s
+                      </span>
+                    </div>
+                    <p className="text-white/40 text-[9px] mt-0.5 truncate">{mediaUrl.split('/').pop()}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => openEditSlide(sl)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all">
+                      <Edit2 size={14} />
+                    </button>
+                    <button onClick={() => removeSlide(sl)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex-1 text-[11px] text-white/80 truncate">
-                  <span className="font-bold">{sl.headline || 'No Text'}</span>
-                  <p className="text-white/40 text-[9px] mt-0.5 truncate">{sl.image.split('/').pop()}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => setSlideDraft(sl)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all">
-                    <Edit2 size={14} />
-                  </button>
-                  <button onClick={() => removeSlide(sl.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : (

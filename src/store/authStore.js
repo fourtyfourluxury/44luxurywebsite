@@ -6,6 +6,15 @@ import * as authService from '../services/authService';
  * Now integrated with Supabase Auth
  */
 
+/**
+ * Dev admin bypass is ONLY allowed in local development builds (import.meta.env.DEV)
+ * and when not opted out via VITE_DISABLE_DEV_ADMIN_BYPASS=true.
+ * It can NEVER be active in a production build.
+ */
+export const isDevBypassAllowed = () =>
+  import.meta.env.DEV &&
+  String(import.meta.env.VITE_DISABLE_DEV_ADMIN_BYPASS).toLowerCase() !== 'true';
+
 export const useAuthStore = create((set, get) => ({
   // State
   user: null,
@@ -13,6 +22,7 @@ export const useAuthStore = create((set, get) => ({
   session: null,
   isAuthenticated: false,
   isAdmin: false,
+  isDevBypass: false,
   loading: true,
   error: null,
   _initializing: false, // Prevent multiple simultaneous initializations
@@ -67,6 +77,7 @@ export const useAuthStore = create((set, get) => ({
           profile,
           isAuthenticated: true,
           isAdmin: profile.role === 'admin',
+          isDevBypass: false,
           loading: false,
           error: null,
           _initializing: false,
@@ -76,23 +87,30 @@ export const useAuthStore = create((set, get) => ({
           isAdmin: profile.role === 'admin',
           email: user.email
         });
-      } else if (localStorage.getItem('dev_admin') === 'true') {
+      } else if (import.meta.env.DEV && isDevBypassAllowed() && localStorage.getItem('dev_admin') === 'true') {
         set({
           user: { id: 'dev-admin-id', email: 'admin@44luxury.com' },
           profile: { role: 'admin', email: 'admin@44luxury.com', full_name: 'Developer Admin' },
+          session: null,
           isAuthenticated: true,
           isAdmin: true,
+          isDevBypass: true,
           loading: false,
           error: null,
           _initializing: false,
         });
         console.log('✅ authStore.initialize: Dev admin bypass active');
       } else {
+        if (localStorage.getItem('dev_admin') === 'true') {
+          localStorage.removeItem('dev_admin');
+        }
         set({
           user: null,
           profile: null,
+          session: null,
           isAuthenticated: false,
           isAdmin: false,
+          isDevBypass: false,
           loading: false,
           _initializing: false,
         });
@@ -211,6 +229,7 @@ export const useAuthStore = create((set, get) => ({
   signOut: async () => {
     try {
       set({ loading: true });
+      localStorage.removeItem('dev_admin');
       const { error } = await authService.signOut();
       
       if (error) {
@@ -224,6 +243,7 @@ export const useAuthStore = create((set, get) => ({
         session: null,
         isAuthenticated: false,
         isAdmin: false,
+        isDevBypass: false,
         loading: false,
         error: null,
       });
@@ -281,6 +301,7 @@ export const useAuthStore = create((set, get) => ({
 
         if (event === 'SIGNED_IN' && session) {
           console.log('🔔 SIGNED_IN event - fetching profile...');
+          localStorage.removeItem('dev_admin');
           // Fetch profile directly here without going through initialize
           const profile = await authService.getUserProfile(session.user.id);
           
@@ -290,6 +311,7 @@ export const useAuthStore = create((set, get) => ({
             session,
             isAuthenticated: true,
             isAdmin: profile?.role === 'admin',
+            isDevBypass: false,
             loading: false,
           });
 
@@ -320,6 +342,7 @@ export const useAuthStore = create((set, get) => ({
           set({ session });
         } else if (event === 'INITIAL_SESSION' && session) {
           console.log('🔔 INITIAL_SESSION event - fetching profile...');
+          localStorage.removeItem('dev_admin');
           // Fetch profile for initial session
           const profile = await authService.getUserProfile(session.user.id);
           
@@ -329,6 +352,7 @@ export const useAuthStore = create((set, get) => ({
             session,
             isAuthenticated: true,
             isAdmin: profile?.role === 'admin',
+            isDevBypass: false,
             loading: false,
           });
 

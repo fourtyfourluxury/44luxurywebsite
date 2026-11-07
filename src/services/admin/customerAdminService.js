@@ -1,4 +1,11 @@
 import { supabase } from '../../lib/supabase';
+import { isOrderPaid, applyPaidOrderFilter } from './dashboardService';
+
+const logSupabaseError = (error) => {
+  if (error) {
+    console.error(error.message, error.details, error.hint, error.code);
+  }
+};
 
 /**
  * Customer Admin Service
@@ -88,9 +95,10 @@ export async function getCustomerById(customerId) {
 
     if (addressesError) throw addressesError;
 
-    // Calculate statistics
-    const totalSpent = orders.reduce((sum, order) => sum + order.total, 0);
-    const avgOrderValue = orders.length > 0 ? totalSpent / orders.length : 0;
+    // Calculate statistics (count only confirmed paid orders toward spend & AOV)
+    const paidOrders = orders.filter(isOrderPaid);
+    const totalSpent = paidOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+    const avgOrderValue = paidOrders.length > 0 ? totalSpent / paidOrders.length : 0;
 
     const customer = {
       ...profile,
@@ -99,6 +107,7 @@ export async function getCustomerById(customerId) {
       addresses,
       stats: {
         totalOrders: orders.length,
+        paidOrders: paidOrders.length,
         totalSpent,
         avgOrderValue,
         totalComplaints: complaints.length,
@@ -108,7 +117,7 @@ export async function getCustomerById(customerId) {
 
     return { data: customer, error: null };
   } catch (error) {
-    console.error('Error fetching customer:', error);
+    logSupabaseError(error);
     return { data: null, error: error.message };
   }
 }
@@ -163,19 +172,21 @@ export async function getCustomerStats() {
  */
 export async function getTopCustomers(limit = 10) {
   try {
-    // Get all orders with user info
-    const { data: orders, error } = await supabase
-      .from('orders')
-      .select(`
-        user_id,
-        total,
-        profiles:user_id (
-          id,
-          full_name,
-          email
-        )
-      `)
-      .not('user_id', 'is', null);
+    // Get paid orders with user info
+    const { data: orders, error } = await applyPaidOrderFilter(
+      supabase
+        .from('orders')
+        .select(`
+          user_id,
+          total,
+          profiles:user_id (
+            id,
+            full_name,
+            email
+          )
+        `)
+        .not('user_id', 'is', null)
+    );
 
     if (error) throw error;
 
@@ -192,7 +203,7 @@ export async function getTopCustomers(limit = 10) {
             orderCount: 0,
           };
         }
-        customerTotals[order.user_id].totalSpent += order.total;
+        customerTotals[order.user_id].totalSpent += order.total || 0;
         customerTotals[order.user_id].orderCount += 1;
       }
     });
@@ -204,7 +215,7 @@ export async function getTopCustomers(limit = 10) {
 
     return { data: topCustomers, error: null };
   } catch (error) {
-    console.error('Error fetching top customers:', error);
+    logSupabaseError(error);
     return { data: null, error: error.message };
   }
 }

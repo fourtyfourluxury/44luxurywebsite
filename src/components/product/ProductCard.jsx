@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useSiteStore } from '../../store/useSiteStore';
+import { getEffectivePrice } from '../../utils/pricing';
 
 export default function ProductCard({ product }) {
   const [hovered, setHovered] = useState(false);
+  const storeSale = useSiteStore(state => state.storeSale);
 
   const mainImage  = product.images?.[0] || '';
   const hoverImage = product.images?.[1] || mainImage;
 
-  // Support both camelCase (legacy) and snake_case (DB)
-  const hasSale      = (product.compare_price || product.comparePrice) > product.price;
+  const { originalPrice, finalPrice, discountPercent, isOnSale } = getEffectivePrice(product, storeSale);
+  const hasSale      = isOnSale;
   const isNew        = product.is_new || product.isNew;
   const isBestSeller = product.is_best_seller;
   const isLimited    = product.is_limited_edition;
@@ -16,13 +19,13 @@ export default function ProductCard({ product }) {
   const isPreOrder   = product.status === 'PRE-ORDER';
   const outOfStock   = isSoldOut || (product.stock ?? 1) <= 0;
 
-  // Badge priority: SOLD OUT > LIMITED > SALE > BEST SELLER > NEW IN
-  const badge = isSoldOut    ? { label: 'SOLD OUT',   cls: 'bg-[#5f5e5e] text-[#fcf9f3]' }
-    : isLimited    ? { label: 'LIMITED',    cls: 'bg-[#4b0e1e] text-[#fcf9f3]' }
-    : hasSale      ? { label: 'SALE',       cls: 'bg-[#5f5e5e] text-[#fcf9f3]' }
-    : isBestSeller ? { label: 'BEST SELLER',cls: 'bg-[#1c1c18] text-[#c9a96e]' }
-    : isNew        ? { label: 'NEW IN',     cls: 'bg-[#1c1c18] text-[#fcf9f3]' }
-    : isPreOrder   ? { label: 'PRE-ORDER',  cls: 'bg-blue-900 text-blue-200' }
+  // Badge priority: SOLD OUT > SALE (-X%) > LIMITED > BEST SELLER > NEW IN > PRE-ORDER
+  const badge = isSoldOut    ? { label: 'SOLD OUT',              cls: 'bg-[#5f5e5e] text-[#fcf9f3]' }
+    : hasSale      ? { label: `-${discountPercent}%`,  cls: 'bg-[#4b0e1e] text-[#fcf9f3]' }
+    : isLimited    ? { label: 'LIMITED',               cls: 'bg-[#4b0e1e] text-[#fcf9f3]' }
+    : isBestSeller ? { label: 'BEST SELLER',           cls: 'bg-[#1c1c18] text-[#c9a96e]' }
+    : isNew        ? { label: 'NEW IN',                cls: 'bg-[#1c1c18] text-[#fcf9f3]' }
+    : isPreOrder   ? { label: 'PRE-ORDER',             cls: 'bg-blue-900 text-blue-200' }
     : null;
 
   return (
@@ -63,11 +66,11 @@ export default function ProductCard({ product }) {
         </h3>
         <div className="flex items-center justify-center gap-2">
           <p className={`font-grotesk font-bold text-sm ${hasSale ? 'text-[#1c6b5a]' : 'text-[#1c1c18]'}`}>
-            ₦{product.price?.toLocaleString()}
+            ₦{finalPrice.toLocaleString()}
           </p>
-          {hasSale && (
+          {hasSale && originalPrice > finalPrice && (
             <p className="font-plex text-xs text-[#5f5e5e] line-through">
-              ₦{(product.compare_price || product.comparePrice)?.toLocaleString()}
+              ₦{originalPrice.toLocaleString()}
             </p>
           )}
         </div>

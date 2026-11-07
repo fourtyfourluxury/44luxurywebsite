@@ -11,6 +11,9 @@ import { detectMissingColumns, clearSchemaCache } from '../../services/schemaDet
 import { toast } from '../../components/ui/ToastProvider';
 import ProductEditor from './ProductEditor';
 import RowActionMenu from '../../components/admin/RowActionMenu';
+import { getStoreSale } from '../../services/saleService';
+import { getEffectivePrice } from '../../utils/pricing';
+import { useSiteStore } from '../../store/useSiteStore';
 
 const STATUS_CFG = {
   ACTIVE:       { dot: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'In Stock' },
@@ -58,6 +61,7 @@ export default function ProductsManager() {
   const [reordering, setReordering]   = useState(false);
   const [viewMode, setViewMode]       = useState('table'); // 'table' | 'grid'
   const [missingCols, setMissingCols] = useState([]);
+  const storeSale = useSiteStore(state => state.storeSale);
 
   useEffect(() => { load(); }, [filterStatus]);
 
@@ -68,12 +72,14 @@ export default function ProductsManager() {
 
   const load = async () => {
     setLoading(true);
-    const [{ products: data }, { stats: s }] = await Promise.all([
+    const [{ products: data }, { stats: s }, { sale }] = await Promise.all([
       getAllProducts({ search, status: filterStatus }),
       getProductStats(),
+      getStoreSale(),
     ]);
     setProducts(data || []);
     if (s) setStats(s);
+    if (sale) useSiteStore.getState().setStoreSale(sale);
     setLoading(false);
     // Check schema after load
     detectMissingColumns('products', ['is_best_seller', 'is_limited_edition', 'sort_order', 'video_url'])
@@ -321,10 +327,24 @@ export default function ProductsManager() {
 
                 {/* Price */}
                 <td className="px-5 py-3.5">
-                  <p className="text-[13px] font-semibold text-white/80">₦{(p.price || 0).toLocaleString()}</p>
-                  {p.compare_price > 0 && (
-                    <p className="text-[10px] text-white/25 line-through">₦{p.compare_price.toLocaleString()}</p>
-                  )}
+                  {(() => {
+                    const eff = getEffectivePrice(p, storeSale);
+                    return (
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-[13px] font-semibold text-white/80">₦{eff.finalPrice.toLocaleString()}</p>
+                          {eff.isOnSale && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#4b0e1e] text-[#fcf9f3] text-[9px] font-bold uppercase tracking-wider">
+                              ON SALE -{eff.discountPercent}%
+                            </span>
+                          )}
+                        </div>
+                        {eff.isOnSale && eff.originalPrice > eff.finalPrice && (
+                          <p className="text-[10px] text-white/25 line-through">₦{eff.originalPrice.toLocaleString()}</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </td>
 
                 {/* Stock */}

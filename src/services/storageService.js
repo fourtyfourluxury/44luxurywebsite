@@ -35,7 +35,7 @@ export const getBucketForContext = (context) => {
 export const generateFileName = (originalName) => {
   const timestamp = Date.now();
   const randomString = Math.random().toString(36).substring(2, 15);
-  const extension = originalName.split('.').pop();
+  const extension = (originalName.split('.').pop() || '').toLowerCase();
   const nameWithoutExt = originalName.split('.').slice(0, -1).join('.');
   const sanitizedName = nameWithoutExt.replace(/[^a-z0-9]/gi, '-').toLowerCase();
   
@@ -49,6 +49,7 @@ export const uploadFile = async (file, options = {}) => {
       bucket = BUCKETS.GENERAL,
       folder = '',
       fileName = null,
+      contentType = null,
       onProgress = null,
     } = options;
 
@@ -60,19 +61,24 @@ export const uploadFile = async (file, options = {}) => {
       bucket,
       filePath,
       size: file.size,
-      type: file.type,
+      type: contentType || file.type,
     });
 
     // Upload file
+    const uploadOpts = {
+      cacheControl: '3600',
+      upsert: false,
+    };
+    if (contentType || file.type) {
+      uploadOpts.contentType = contentType || file.type;
+    }
+
     const { data, error } = await supabase.storage
       .from(bucket)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
+      .upload(filePath, file, uploadOpts);
 
     if (error) {
-      console.error('❌ Upload error:', error);
+      console.error(error.message, error.details, error.hint, error.code);
       throw error;
     }
 

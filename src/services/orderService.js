@@ -6,6 +6,30 @@ import { getCurrentUser } from '../lib/supabase';
  * Handles order-related operations
  */
 
+const logSupabaseError = (error) => {
+  if (!error) return;
+  console.error(error.message, error.details, error.hint, error.code);
+};
+
+const normalizeCustomerOrder = (order) => {
+  if (!order) return order;
+  const orderItems = Array.isArray(order.order_items)
+    ? order.order_items.map((item) => {
+        const qty = item.qty ?? item.quantity ?? 1;
+        return {
+          ...item,
+          qty,
+          quantity: qty,
+        };
+      })
+    : [];
+  return {
+    ...order,
+    order_items: orderItems,
+    items: orderItems,
+  };
+};
+
 // Get user's orders
 export const getMyOrders = async () => {
   try {
@@ -23,9 +47,9 @@ export const getMyOrders = async () => {
 
     if (error) throw error;
 
-    return { orders: data, error: null };
+    return { orders: (data || []).map(normalizeCustomerOrder), error: null };
   } catch (error) {
-    console.error('Get my orders error:', error);
+    logSupabaseError(error);
     return { orders: [], error: error.message };
   }
 };
@@ -48,9 +72,9 @@ export const getOrderById = async (orderId) => {
 
     if (error) throw error;
 
-    return { order: data, error: null };
+    return { order: normalizeCustomerOrder(data), error: null };
   } catch (error) {
-    console.error('Get order by ID error:', error);
+    logSupabaseError(error);
     return { order: null, error: error.message };
   }
 };
@@ -73,9 +97,9 @@ export const getOrderByNumber = async (orderNumber) => {
 
     if (error) throw error;
 
-    return { order: data, error: null };
+    return { order: normalizeCustomerOrder(data), error: null };
   } catch (error) {
-    console.error('Get order by number error:', error);
+    logSupabaseError(error);
     return { order: null, error: error.message };
   }
 };
