@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
 import { useSiteStore } from '../store/useSiteStore';
+import { getEffectivePrice } from '../utils/pricing';
 
 export default function Cart() {
-  const { cart, removeFromCart, updateQty, getCartTotal, clearCart } = useSiteStore();
+  const { cart, products, storeSale, removeFromCart, updateQty, getCartTotal, clearCart } = useSiteStore();
   const total = getCartTotal();
 
   if (cart.length === 0) {
@@ -81,9 +82,22 @@ export default function Cart() {
                         <Plus size={14} />
                       </button>
                     </div>
-                    <span className="font-grotesk font-bold text-sm text-[#1c1c18]">
-                      ₦{(item.price * item.qty).toLocaleString()}
-                    </span>
+                    {(() => {
+                      const liveProduct = products.find(p => p.id === item.id) || item;
+                      const eff = getEffectivePrice(liveProduct, storeSale);
+                      return (
+                        <div className="text-right">
+                          <span className="font-grotesk font-bold text-sm text-[#1c1c18]">
+                            ₦{(eff.finalPrice * item.qty).toLocaleString()}
+                          </span>
+                          {eff.isOnSale && eff.originalPrice > eff.finalPrice && (
+                            <span className="block font-plex text-xs text-[#5f5e5e] line-through">
+                              ₦{(eff.originalPrice * item.qty).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -106,16 +120,20 @@ export default function Cart() {
               <h2 className="font-unica text-3xl uppercase tracking-tighter text-[#1c1c18] mb-6">ORDER SUMMARY</h2>
 
               <div className="flex flex-col gap-3 mb-6 border-b border-[#1c1c18]/10 pb-6">
-                {cart.map(item => (
-                  <div key={item.cartId} className="flex justify-between items-start gap-3">
-                    <span className="font-plex text-xs text-[#5f5e5e] flex-1 leading-snug">
-                      {item.name} × {item.qty}
-                    </span>
-                    <span className="font-grotesk font-semibold text-xs text-[#1c1c18] shrink-0">
-                      ₦{(item.price * item.qty).toLocaleString()}
-                    </span>
-                  </div>
-                ))}
+                {cart.map(item => {
+                  const liveProduct = products.find(p => p.id === item.id) || item;
+                  const eff = getEffectivePrice(liveProduct, storeSale);
+                  return (
+                    <div key={item.cartId} className="flex justify-between items-start gap-3">
+                      <span className="font-plex text-xs text-[#5f5e5e] flex-1 leading-snug">
+                        {item.name} × {item.qty}
+                      </span>
+                      <span className="font-grotesk font-semibold text-xs text-[#1c1c18] shrink-0">
+                        ₦{(eff.finalPrice * item.qty).toLocaleString()}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="flex justify-between items-center mb-2">

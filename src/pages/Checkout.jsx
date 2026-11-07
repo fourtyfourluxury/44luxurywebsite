@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
 import { toast } from '../components/ui/ToastProvider';
 import CryptoPaymentModal from '../components/checkout/CryptoPaymentModal';
+import { getEffectivePrice } from '../utils/pricing';
 
 const NIGERIAN_STATES = [
   'Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno',
@@ -20,9 +21,13 @@ const COUNTRIES = [
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { cart, getCartTotal, clearCart } = useSiteStore();
+  const { cart, products, storeSale, getCartTotal, clearCart } = useSiteStore();
   const { user, profile } = useAuthStore();
   const total = getCartTotal();
+  const getItemPricing = (item) => {
+    const liveProduct = products.find(p => p.id === item.id) || item;
+    return getEffectivePrice(liveProduct, storeSale);
+  };
 
   const [form, setForm] = useState({
     firstName: profile?.full_name?.split(' ')[0] || '',
@@ -60,7 +65,7 @@ export default function Checkout() {
         size: item.size,
         color: item.color,
         qty: item.qty,
-        price: item.price,
+        price: getItemPricing(item).finalPrice,
         image: item.images?.[0] || null,
       }));
 
@@ -108,7 +113,7 @@ export default function Checkout() {
     try {
       const items = cart.map(item => ({
         product_id: item.id, name: item.name, size: item.size,
-        color: item.color, qty: item.qty, price: item.price,
+        color: item.color, qty: item.qty, price: getItemPricing(item).finalPrice,
         image: item.images?.[0] || null,
       }));
 
@@ -415,7 +420,17 @@ export default function Checkout() {
                       <p className="font-grotesk font-semibold text-xs text-[#1c1c18] uppercase tracking-wide truncate">{item.name}</p>
                       <p className="font-plex text-[11px] text-[#5f5e5e]">{item.size}{item.color ? ` · ${item.color}` : ''}</p>
                     </div>
-                    <p className="font-plex text-sm text-[#1c1c18] shrink-0">₦{(item.price * item.qty).toLocaleString()}</p>
+                    {(() => {
+                      const eff = getItemPricing(item);
+                      return (
+                        <div className="text-right shrink-0">
+                          <p className="font-plex text-sm text-[#1c1c18]">₦{(eff.finalPrice * item.qty).toLocaleString()}</p>
+                          {eff.isOnSale && eff.originalPrice > eff.finalPrice && (
+                            <p className="font-plex text-[10px] text-[#5f5e5e] line-through">₦{(eff.originalPrice * item.qty).toLocaleString()}</p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
@@ -454,7 +469,7 @@ export default function Checkout() {
                     <p className="font-grotesk font-semibold text-xs text-[#1c1c18] uppercase truncate">{item.name}</p>
                     <p className="font-plex text-[10px] text-[#5f5e5e]">{item.size}</p>
                   </div>
-                  <p className="font-plex text-xs text-[#1c1c18]">₦{(item.price * item.qty).toLocaleString()}</p>
+                  <p className="font-plex text-xs text-[#1c1c18]">₦{(getItemPricing(item).finalPrice * item.qty).toLocaleString()}</p>
                 </div>
               ))}
               <div className="border-t border-[#1c1c18]/10 pt-3 mt-3 flex justify-between items-baseline">

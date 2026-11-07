@@ -196,7 +196,7 @@ export default function AdminDashboard() {
         <StatCard
           label="Total Orders"
           value={stats?.orders?.total ?? 0}
-          subtext={`${stats?.orders?.pending ?? 0} pending`}
+          subtext={`${stats?.orders?.paid ?? 0} paid · ${stats?.orders?.pending ?? 0} Pending (unpaid)`}
           icon={ShoppingCart}
           accent={{ bg: 'bg-blue-500/10', text: 'text-blue-400' }}
         />

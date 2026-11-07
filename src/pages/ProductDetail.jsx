@@ -6,13 +6,15 @@ import { toast } from '../components/ui/ToastProvider';
 import ProductCard from '../components/product/ProductCard';
 import ImageLightbox from '../components/ui/ImageLightbox';
 import { resolveSwatchColor, needsSwatchBorder } from '../utils/colors';
+import { getEffectivePrice } from '../utils/pricing';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { products, addToCart, addRecentlyViewed, loading, initialized, toggleWishlist, isWishlisted } = useSiteStore();
+  const { products, storeSale, addToCart, addRecentlyViewed, loading, initialized, toggleWishlist, isWishlisted } = useSiteStore();
 
   const product = products.find(p => p.id === id);
+  const { originalPrice, finalPrice, discountPercent, isOnSale } = getEffectivePrice(product, storeSale);
 
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
@@ -137,11 +139,15 @@ export default function ProductDetail() {
               <button className="absolute top-4 right-4 w-9 h-9 bg-[#fcf9f3]/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                 <ZoomIn size={15} className="text-[#1c1c18]" />
               </button>
-              {product.isNew && (
+              {isOnSale ? (
+                <div className="absolute top-4 left-4 bg-[#4b0e1e] text-[#fcf9f3] font-grotesk font-bold text-[10px] uppercase tracking-widest px-2.5 py-1 z-10">
+                  -{discountPercent}%
+                </div>
+              ) : product.isNew ? (
                 <div className="absolute top-4 left-4 bg-[#1c1c18] text-[#fcf9f3] font-grotesk font-bold text-[10px] uppercase tracking-widest px-2.5 py-1 z-10">
                   NEW IN
                 </div>
-              )}
+              ) : null}
               {product.images?.length > 1 && (
                 <>
                   <button
@@ -195,9 +201,16 @@ export default function ProductDetail() {
                 <h1 className="font-grotesk font-semibold text-lg text-[#1c1c18]">{product.name}</h1>
               </div>
               <div className="text-right shrink-0">
-                <p className="font-grotesk font-semibold text-lg text-[#1c1c18]">₦{product.price?.toLocaleString()}</p>
-                {product.comparePrice && (
-                  <p className="font-plex text-xs text-[#5f5e5e] line-through">₦{product.comparePrice?.toLocaleString()}</p>
+                <div className="flex items-center justify-end gap-2">
+                  {isOnSale && (
+                    <span className="bg-[#4b0e1e] text-[#fcf9f3] font-grotesk font-bold text-[10px] uppercase tracking-widest px-2 py-0.5">
+                      -{discountPercent}%
+                    </span>
+                  )}
+                  <p className="font-grotesk font-semibold text-lg text-[#1c1c18]">₦{finalPrice.toLocaleString()}</p>
+                </div>
+                {isOnSale && originalPrice > finalPrice && (
+                  <p className="font-plex text-xs text-[#5f5e5e] line-through">₦{originalPrice.toLocaleString()}</p>
                 )}
               </div>
             </div>

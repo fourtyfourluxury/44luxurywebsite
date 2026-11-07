@@ -47,6 +47,7 @@ import SettingsManager from './pages/admin/SettingsManager';
 import AdminCredentialsManager from './pages/admin/AdminCredentialsManager';
 import PagesManager from './pages/admin/PagesManager';
 import PartnershipsManager from './pages/admin/PartnershipsManager';
+import SalesManager from './pages/admin/SalesManager';
 
 function App() {
   const siteLoading = useSiteStore(state => state.loading);
@@ -129,6 +130,7 @@ function App() {
                   <Route path="collections" element={<CollectionsManager />} />
                   <Route path="products" element={<ProductsManager />} />
                   <Route path="products/new" element={<ProductsManager />} />
+                  <Route path="sales" element={<SalesManager />} />
                   <Route path="media" element={<MediaLibrary />} />
                   <Route path="videos" element={<VideoManager />} />
                   <Route path="orders" element={<OrdersManager />} />

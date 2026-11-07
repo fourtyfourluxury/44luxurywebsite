@@ -158,7 +158,12 @@ export default function OrdersManager() {
                   <PaymentPill status={order.payment_status} />
                   <StatusPill status={order.status} />
                 </div>
-                <p className="text-[11px] text-white/40 truncate">{order.customer_name} · {order.customer_email}</p>
+                <p className="text-[11px] text-white/40 truncate">{order.customer_name} · {order.customer_email || order.email}</p>
+                {order.items?.length > 0 && (
+                  <p className="text-[11px] text-[#c9a96e]/80 truncate mt-0.5">
+                    {order.items.map(it => `${it.product?.name || it.name || 'Product'} × ${it.quantity ?? it.qty ?? 1}`).join(', ')}
+                  </p>
+                )}
               </div>
               <div className="text-right shrink-0">
                 <p className="text-[13px] font-semibold text-white">₦{(order.total||0).toLocaleString()}</p>
@@ -229,12 +234,16 @@ export default function OrdersManager() {
               {/* Customer */}
               <div className="bg-[#141410] border border-white/[0.06] rounded-xl p-4 space-y-2.5">
                 <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-3">Customer</p>
-                <div className="flex items-center gap-2 text-[12px] text-white/60"><Mail size={12} className="text-white/20" />{detail.customer_email}</div>
-                <div className="flex items-center gap-2 text-[12px] text-white/60"><Phone size={12} className="text-white/20" />{detail.customer_phone || '—'}</div>
-                {detail.shipping_address && (
+                <div className="flex items-center gap-2 text-[12px] text-white/60"><Mail size={12} className="text-white/20" />{detail.customer_email || detail.email}</div>
+                <div className="flex items-center gap-2 text-[12px] text-white/60"><Phone size={12} className="text-white/20" />{detail.customer_phone || detail.phone || '—'}</div>
+                {(detail.shipping_address || detail.address) && (
                   <div className="flex items-start gap-2 text-[12px] text-white/60">
                     <MapPin size={12} className="text-white/20 mt-0.5 shrink-0" />
-                    <span>{detail.shipping_address?.line1}, {detail.shipping_address?.city}, {detail.shipping_address?.state}</span>
+                    <span>
+                      {detail.shipping_address
+                        ? `${detail.shipping_address?.line1}, ${detail.shipping_address?.city}, ${detail.shipping_address?.state}`
+                        : [detail.address, detail.city, detail.state, detail.country].filter(Boolean).join(', ')}
+                    </span>
                   </div>
                 )}
               </div>
@@ -242,18 +251,23 @@ export default function OrdersManager() {
               {/* Items */}
               <div className="bg-[#141410] border border-white/[0.06] rounded-xl overflow-hidden">
                 <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider px-4 py-3 border-b border-white/[0.06]">Items Ordered</p>
-                {(detail.items || []).map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.04] last:border-0">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                      {item.product?.images?.[0] && <img src={item.product.images[0]} alt="" className="w-full h-full object-cover" />}
+                {(detail.items || []).map((item, i) => {
+                  const itemQty = item.quantity ?? item.qty ?? 1;
+                  const itemImg = item.product?.images?.[0] || item.image;
+                  const itemName = item.product?.name || item.name || 'Product';
+                  return (
+                    <div key={item.id || i} className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.04] last:border-0">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/5 shrink-0">
+                        {itemImg && <img src={itemImg} alt="" className="w-full h-full object-cover" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-white/70 truncate">{itemName}</p>
+                        <p className="text-[10px] text-white/30 mt-0.5">{item.size && `Size: ${item.size}`} {item.color && `· ${item.color}`} · Qty: {itemQty}</p>
+                      </div>
+                      <p className="text-[12px] font-semibold text-white/60 shrink-0">₦{((item.price || 0) * itemQty).toLocaleString()}</p>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-white/70 truncate">{item.product?.name || 'Product'}</p>
-                      <p className="text-[10px] text-white/30 mt-0.5">{item.size && `Size: ${item.size}`} {item.color && `· ${item.color}`} · Qty: {item.quantity}</p>
-                    </div>
-                    <p className="text-[12px] font-semibold text-white/60 shrink-0">₦{((item.price || 0) * (item.quantity || 1)).toLocaleString()}</p>
-                  </div>
-                ))}
+                  );
+                })}
                 <div className="px-4 py-3 bg-white/[0.02] flex justify-between">
                   <p className="text-[12px] font-bold text-white">Total</p>
                   <p className="text-[13px] font-bold text-[#c9a96e]">₦{(detail.total || 0).toLocaleString()}</p>

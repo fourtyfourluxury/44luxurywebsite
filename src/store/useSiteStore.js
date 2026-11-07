@@ -5,6 +5,8 @@ import * as collectionService from '../services/collectionService';
 import * as homepageService from '../services/homepageService';
 import { getPartnerships } from '../services/partnershipService';
 import { getMyOrders } from '../services/orderService';
+import { getStoreSale } from '../services/saleService';
+import { getEffectivePrice } from '../utils/pricing';
 import { subscribeToHomepageConfig, subscribeToHeroSlides, subscribeToProducts, subscribeToCollections, subscribeToHomepageSections, subscribeToPartnerships } from '../services/realtimeService';
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -17,6 +19,7 @@ export const useSiteStore = create(
       collections: [],
       partnerships: [],
       heroSlides: [],
+      storeSale: null,
       loading: true,
       initialized: false,
       error: null,
@@ -198,6 +201,9 @@ export const useSiteStore = create(
             console.warn('Error fetching homepage sections:', sectionsError);
           }
 
+          // Fetch store-wide sale configuration once on page load (no realtime)
+          const { sale: storeSale } = await getStoreSale();
+
           // Update store with fetched data
           set({
             products: products || [],
@@ -205,6 +211,7 @@ export const useSiteStore = create(
             partnerships: partnerships || [],
             heroSlides: heroSlides || [],
             homepageSections: homepageSections || [],
+            storeSale: storeSale || null,
             // Update homepage sections from config
             announcement: homepageConfig?.announcement || state.announcement,
             heroDisplayMode: homepageConfig?.hero_display_mode || state.heroDisplayMode,
@@ -376,6 +383,16 @@ export const useSiteStore = create(
         }
       },
 
+      refreshStoreSale: async () => {
+        const { sale, error } = await getStoreSale();
+        if (!error && sale) {
+          set({ storeSale: sale });
+        }
+        return { sale, error };
+      },
+
+      setStoreSale: (storeSale) => set({ storeSale }),
+
       // ─── Orders ──────────────────────────────────────────────
       // Load the signed-in customer's own orders (RLS scopes this to them).
       fetchMyOrders: async () => {
@@ -426,8 +443,12 @@ export const useSiteStore = create(
       clearCart: () => set({ cart: [] }),
 
       getCartTotal: () => {
-        const { cart } = get();
-        return cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+        const { cart, products, storeSale } = get();
+        return cart.reduce((sum, i) => {
+          const liveProduct = products.find(p => p.id === i.id) || i;
+          const { finalPrice } = getEffectivePrice(liveProduct, storeSale);
+          return sum + finalPrice * i.qty;
+        }, 0);
       },
 
       getCartCount: () => {

@@ -22,6 +22,7 @@ const FULL_KNOWN_COLUMNS = {
     'is_new', 'is_featured', 'stock', 'seo_title', 'seo_description',
     'is_best_seller', 'is_limited_edition', 'sort_order', 'video_url',
     'subcategory', 'season', 'brand', 'material', 'weight', 'tags',
+    'discount_enabled', 'discount_percent', 'sale_excluded',
     'created_at', 'updated_at',
   ]),
 };

@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
 import { X, Trash2 } from 'lucide-react';
 import { useSiteStore } from '../../store/useSiteStore';
+import { getEffectivePrice } from '../../utils/pricing';
 
 export default function CartDrawer() {
-  const { cart, isCartOpen, closeCart, removeFromCart, getCartTotal } = useSiteStore();
+  const { cart, products, storeSale, isCartOpen, closeCart, removeFromCart, getCartTotal } = useSiteStore();
   const total = getCartTotal();
 
   if (!isCartOpen) return null;
@@ -69,9 +70,22 @@ export default function CartDrawer() {
                   <span className="font-grotesk text-xs text-[#5f5e5e] uppercase tracking-wide">
                     Qty: {item.qty}
                   </span>
-                  <span className="font-grotesk font-bold text-sm text-[#1c1c18]">
-                    ₦{(item.price * item.qty).toLocaleString()}
-                  </span>
+                  {(() => {
+                    const liveProduct = products.find(p => p.id === item.id) || item;
+                    const eff = getEffectivePrice(liveProduct, storeSale);
+                    return (
+                      <div className="text-right">
+                        <span className="font-grotesk font-bold text-sm text-[#1c1c18]">
+                          ₦{(eff.finalPrice * item.qty).toLocaleString()}
+                        </span>
+                        {eff.isOnSale && eff.originalPrice > eff.finalPrice && (
+                          <span className="block font-plex text-[10px] text-[#5f5e5e] line-through">
+                            ₦{(eff.originalPrice * item.qty).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

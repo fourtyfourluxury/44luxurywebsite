@@ -4,11 +4,12 @@ import { useSiteStore } from '../store/useSiteStore';
 import ProductCard from '../components/product/ProductCard';
 import FilterBar from '../components/product/FilterBar';
 import { searchProducts } from '../services/searchService';
+import { getEffectivePrice, isStoreSaleActive, clampPercent } from '../utils/pricing';
 
 // ── Main Shop page ─────────────────────────────────────────────────────────────
 export default function Shop() {
   const [searchParams] = useSearchParams();
-  const { products, _hasHydrated } = useSiteStore();
+  const { products, storeSale, _hasHydrated } = useSiteStore();
   const [searchResults, setSearchResults] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
 
@@ -35,9 +36,9 @@ export default function Shop() {
 
   // Compute max price from products for range slider
   const maxPrice = useMemo(() => {
-    const prices = products.map(p => p.price || 0);
+    const prices = products.map(p => getEffectivePrice(p, storeSale).finalPrice || 0);
     return prices.length > 0 ? Math.ceil(Math.max(...prices) / 1000) * 1000 : 500000;
-  }, [products]);
+  }, [products, storeSale]);
 
   // Initialise price range once max is known
   useEffect(() => {
@@ -69,10 +70,14 @@ export default function Shop() {
   // Apply price filter
   if (priceRange[1] !== Infinity) {
     filtered = filtered.filter(p => {
-      const price = p.price || 0;
+      const price = getEffectivePrice(p, storeSale).finalPrice || 0;
       return price >= priceRange[0] && price <= priceRange[1];
     });
   }
+
+  const saleActive = isStoreSaleActive(storeSale);
+  const salePct = clampPercent(storeSale?.discount_percent);
+  const saleLabel = (storeSale?.label || 'BLACK FRIDAY SALE').trim();
 
   const pageTitle = searchQuery ? searchQuery : 'ALL PRODUCTS';
   const effectiveMax = maxPrice > 0 ? maxPrice : 500000;
@@ -93,6 +98,20 @@ export default function Shop() {
           </h1>
         </div>
       </div>
+
+      {/* ── Active Store-Wide Sale Banner ────────────────── */}
+      {saleActive && (
+        <div className="bg-[#4b0e1e] text-[#fcf9f3] py-3 px-6 border-b border-[#fcf9f3]/10">
+          <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-center gap-3 text-center">
+            <span className="font-unica text-lg sm:text-xl uppercase tracking-wider">
+              {saleLabel}
+            </span>
+            <span className="bg-[#fcf9f3] text-[#4b0e1e] font-grotesk font-bold text-[10px] uppercase tracking-widest px-2.5 py-0.5">
+              -{Math.round(salePct)}% OFF
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-[1440px] mx-auto px-6 py-12">
         {/* Filter bar */}

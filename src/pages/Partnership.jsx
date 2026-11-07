@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useSiteStore } from '../store/useSiteStore';
 import ProductCard from '../components/product/ProductCard';
 import FilterBar from '../components/product/FilterBar';
+import { getEffectivePrice } from '../utils/pricing';
 
 // Inject / update <head> SEO tags
 function useSEO({ title, description, keywords }) {
@@ -22,7 +23,7 @@ function useSEO({ title, description, keywords }) {
 
 export default function Partnership() {
   const { slug } = useParams();
-  const { partnerships, products } = useSiteStore();
+  const { partnerships, products, storeSale } = useSiteStore();
 
   const partnership = partnerships.find(p => p.slug === slug);
 
@@ -44,9 +45,9 @@ export default function Partnership() {
   }, [products, partnership]);
 
   const maxPrice = useMemo(() => {
-    const prices = partnershipProducts.map(p => p.price || 0);
+    const prices = partnershipProducts.map(p => getEffectivePrice(p, storeSale).finalPrice || 0);
     return prices.length > 0 ? Math.ceil(Math.max(...prices) / 1000) * 1000 : 500000;
-  }, [partnershipProducts]);
+  }, [partnershipProducts, storeSale]);
 
   useEffect(() => {
     if (maxPrice > 0 && priceRange[1] === Infinity) {
@@ -62,7 +63,7 @@ export default function Partnership() {
   if (availability === 'out_of_stock') filteredProducts = filteredProducts.filter(p => (p.stock ?? 1) <= 0);
   if (effectivePriceRange[1] < effectiveMax || effectivePriceRange[0] > 0) {
     filteredProducts = filteredProducts.filter(p => {
-      const price = p.price || 0;
+      const price = getEffectivePrice(p, storeSale).finalPrice || 0;
       return price >= effectivePriceRange[0] && price <= effectivePriceRange[1];
     });
   }

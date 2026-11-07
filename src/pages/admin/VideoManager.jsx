@@ -9,10 +9,12 @@ import * as videoAdminService from '../../services/admin/videoAdminService';
 const ALL_PAGES = ['Home', 'Men', 'Women', 'Shop', 'About', 'Collections', 'Product Pages'];
 const DISPLAY_STYLES = ['HERO FULLSCREEN', 'INLINE SECTION', 'BACKGROUND LOOP'];
 const PLAYBACKS = ['AUTOPLAY MUTED', 'PLAY ON CLICK', 'LOOP'];
+// Pages and display styles are stored as lowercase slugs (e.g. 'product_pages', 'inline_section')
+const slug = (s) => s.toLowerCase().replace(/\s+/g, '_');
 
 const EMPTY = {
   title: '', source: 'UPLOAD', url: '', youtubeUrl: '', vimeoUrl: '', thumbnail: '',
-  pages: [], displayStyle: 'INLINE SECTION', playback: ['AUTOPLAY MUTED'],
+  pages: [], displayStyle: 'inline_section', playback: ['AUTOPLAY MUTED'],
   overlayHeadline: '', overlaySubtext: '', overlayCta: '',
   displayMode: 'SINGLE', transitionSpeed: 5, status: 'ACTIVE',
 };
@@ -32,6 +34,10 @@ export default function VideoManager() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const openEditor = (form) => { setFormError(''); setEditing(form); };
 
   useEffect(() => {
     loadVideos();
@@ -53,23 +59,45 @@ export default function VideoManager() {
   const togglePage = (page) => set('pages', editing.pages.includes(page) ? editing.pages.filter(p => p !== page) : [...editing.pages, page]);
   const togglePlayback = (p) => set('playback', editing.playback.includes(p) ? editing.playback.filter(x => x !== p) : [...editing.playback, p]);
 
+  const handleVideoFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setFormError('');
+    setUploading(true);
+    const { url, error } = await videoAdminService.uploadVideoFile(file);
+    setUploading(false);
+    if (error) { setFormError(error); toast(error, 'error'); return; }
+    set('url', url);
+    toast('Video uploaded', 'success');
+  };
+
   const handleSave = async () => {
-    if (!editing.title.trim()) { toast('Video title is required', 'error'); return; }
-    
+    const fail = (msg) => { setFormError(msg); toast(msg, 'error'); };
+    if (uploading) return;
+    if (!editing.title.trim()) { fail('Video title is required'); return; }
+    if (editing.source === 'UPLOAD' && !editing.url?.trim()) { fail('Upload a video or enter a video URL'); return; }
+    if (editing.source === 'YOUTUBE' && !editing.youtubeUrl?.trim()) { fail('YouTube URL is required'); return; }
+    if (editing.source === 'VIMEO' && !editing.vimeoUrl?.trim()) { fail('Vimeo URL is required'); return; }
+    if (!editing.pages.length) { fail('Select at least one page'); return; }
+    setFormError('');
+
     try {
       if (editing.id) {
         const { error } = await videoAdminService.updateVideo(editing.id, editing);
         if (error) throw new Error(error);
         toast('Video updated', 'success');
+        setEditing(null);
+        loadVideos();
       } else {
-        const { error } = await videoAdminService.createVideo(editing);
+        const { data, error } = await videoAdminService.createVideo(editing);
         if (error) throw new Error(error);
         toast('Video added', 'success');
+        setEditing(null);
+        if (data) setVideos(prev => [data, ...prev]); // show immediately
       }
-      setEditing(null);
-      loadVideos();
     } catch (error) {
-      toast(error.message, 'error');
+      fail(error.message);
     }
   };
 
@@ -114,7 +142,7 @@ export default function VideoManager() {
           <p className="font-grotesk font-bold text-[10px] uppercase tracking-widest text-concrete mb-1">Admin</p>
           <h1 className="font-unica text-5xl uppercase tracking-tighter text-bone">VIDEOS</h1>
         </div>
-        <button onClick={() => setEditing({ ...EMPTY })}
+        <button onClick={() => openEditor({ ...EMPTY })}
           className="flex items-center gap-2 bg-bone text-[#1c1c18] font-grotesk font-bold uppercase tracking-widest text-xs px-5 py-3 hover:bg-[#D4AF37] transition-colors">
           <Plus size={14} /> ADD VIDEO
         </button>
@@ -148,16 +176,16 @@ export default function VideoManager() {
                     <p className="font-grotesk font-bold text-sm text-bone uppercase tracking-wide mb-1">{video.title}</p>
                     <p className="font-plex text-xs text-concrete mb-2">{getEmbedUrl(video)?.slice(0, 60)}...</p>
                     <div className="flex flex-wrap gap-2 items-center">
-                      {video.pages.map(p => (
+                      {(video.pages || []).map(p => (
                         <span key={p} className="bg-[#1c1c18] border border-[#2a2a26] font-grotesk font-bold text-[9px] uppercase tracking-widest text-concrete px-2 py-0.5">{p}</span>
                       ))}
                       <span className="text-concrete/30">·</span>
-                      <span className="font-plex text-[10px] text-concrete">{video.displayStyle}</span>
+                      <span className="font-plex text-[10px] text-concrete">{video.display_style}</span>
                     </div>
                   </div>
                   <div className="flex gap-3 shrink-0">
                     <StatusBadge status={video.status || 'ACTIVE'} />
-                    <button onClick={() => setEditing({ ...video })} className="text-concrete hover:text-bone"><Edit2 size={15} /></button>
+                    <button onClick={() => openEditor(videoAdminService.fromVideoRow(video))} className="text-concrete hover:text-bone"><Edit2 size={15} /></button>
                     <button onClick={() => setConfirmDelete(video.id)} className="text-concrete hover:text-red-400"><Trash2 size={15} /></button>
                   </div>
                 </div>
@@ -204,7 +232,15 @@ export default function VideoManager() {
               </div>
 
               {/* URL fields based on source */}
-              {editing.source === 'UPLOAD' && <Field label="Video URL (mp4/webm)"><Inp value={editing.url} onChange={e => set('url', e.target.value)} placeholder="https://..." /></Field>}
+              {editing.source === 'UPLOAD' && (
+                <Field label="Video URL (mp4/webm/mov)">
+                  <Inp value={editing.url} onChange={e => set('url', e.target.value)} placeholder="https://..." disabled={uploading} />
+                  <label className={`self-start flex items-center gap-2 border border-[#2a2a26] px-4 py-2 font-grotesk font-bold text-[10px] uppercase tracking-widest transition-colors ${uploading ? 'text-concrete/50 cursor-wait' : 'text-concrete hover:text-bone cursor-pointer'}`}>
+                    <Upload size={12} /> {uploading ? 'Uploading...' : 'Upload Video File (max 100MB)'}
+                    <input type="file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" className="hidden" onChange={handleVideoFile} disabled={uploading} />
+                  </label>
+                </Field>
+              )}
               {editing.source === 'YOUTUBE' && <Field label="YouTube URL"><Inp value={editing.youtubeUrl} onChange={e => set('youtubeUrl', e.target.value)} placeholder="https://youtube.com/watch?v=..." /></Field>}
               {editing.source === 'VIMEO' && <Field label="Vimeo URL"><Inp value={editing.vimeoUrl} onChange={e => set('vimeoUrl', e.target.value)} placeholder="https://vimeo.com/..." /></Field>}
               <Field label="Thumbnail Image URL"><Inp value={editing.thumbnail} onChange={e => set('thumbnail', e.target.value)} placeholder="https://..." /></Field>
@@ -215,9 +251,9 @@ export default function VideoManager() {
                 <label className="block font-grotesk font-bold text-[10px] uppercase tracking-widest text-concrete mb-2">Assign to Pages</label>
                 <div className="flex flex-wrap gap-2">
                   {ALL_PAGES.map(page => (
-                    <button key={page} onClick={() => togglePage(page)}
+                    <button key={page} onClick={() => togglePage(slug(page))}
                       className={`px-3 py-2 font-grotesk font-bold text-[10px] uppercase tracking-widest border transition-colors
-                        ${editing.pages.includes(page) ? 'bg-bone text-[#1c1c18] border-bone' : 'border-[#2a2a26] text-concrete hover:text-bone'}`}>
+                        ${editing.pages.includes(slug(page)) ? 'bg-bone text-[#1c1c18] border-bone' : 'border-[#2a2a26] text-concrete hover:text-bone'}`}>
                       {page}
                     </button>
                   ))}
@@ -229,9 +265,9 @@ export default function VideoManager() {
                 <label className="block font-grotesk font-bold text-[10px] uppercase tracking-widest text-concrete mb-2">Display Style</label>
                 <div className="flex gap-2 flex-wrap">
                   {DISPLAY_STYLES.map(s => (
-                    <button key={s} onClick={() => set('displayStyle', s)}
+                    <button key={s} onClick={() => set('displayStyle', slug(s))}
                       className={`px-4 py-2.5 font-grotesk font-bold text-[10px] uppercase tracking-widest border transition-colors
-                        ${editing.displayStyle === s ? 'bg-bone text-[#1c1c18] border-bone' : 'border-[#2a2a26] text-concrete hover:text-bone'}`}>
+                        ${editing.displayStyle === slug(s) ? 'bg-bone text-[#1c1c18] border-bone' : 'border-[#2a2a26] text-concrete hover:text-bone'}`}>
                       {s}
                     </button>
                   ))}
@@ -286,9 +322,10 @@ export default function VideoManager() {
               </div>
             </div>
 
+            {formError && <p className="px-6 pt-4 font-plex text-xs text-red-400">{formError}</p>}
             <div className="flex gap-3 px-6 pb-6 pt-4 border-t border-[#2a2a26]">
-              <button onClick={handleSave} className="flex-1 bg-bone text-[#1c1c18] font-grotesk font-bold uppercase tracking-widest text-xs py-3.5 hover:bg-[#D4AF37] transition-colors">
-                {editing.id ? 'SAVE CHANGES' : 'ADD VIDEO'}
+              <button onClick={handleSave} disabled={uploading} className="flex-1 bg-bone text-[#1c1c18] font-grotesk font-bold uppercase tracking-widest text-xs py-3.5 hover:bg-[#D4AF37] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                {uploading ? 'UPLOADING...' : editing.id ? 'SAVE CHANGES' : 'ADD VIDEO'}
               </button>
               <button onClick={() => setEditing(null)} className="flex-1 border border-[#2a2a26] text-concrete hover:text-bone font-grotesk font-bold uppercase tracking-widest text-xs py-3.5 transition-colors">
                 CANCEL

@@ -7,6 +7,7 @@ import CartDrawer from './CartDrawer';
 import ToastProvider from '../ui/ToastProvider';
 import BackToTop from '../ui/BackToTop';
 import ProgressBar from '../ui/ProgressBar';
+import { SeasonalAnnouncementBar } from './SeasonalThemeLayer';
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -60,6 +61,7 @@ export default function Layout({ children }) {
       <ProgressBar />
       
       <header className={headerClass}>
+        <SeasonalAnnouncementBar />
         <AnnouncementBar />
         <Navbar isTransparent={false} />
       </header>

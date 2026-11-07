@@ -20,7 +20,14 @@ const SAFE_PRODUCT_COLUMNS = new Set([
   // Columns from migration 017/020 — safe after running migration 020
   'is_best_seller', 'is_limited_edition', 'sort_order', 'video_url',
   'subcategory', 'season', 'brand', 'material', 'weight', 'tags',
+  'discount_enabled', 'discount_percent', 'sale_excluded',
 ]);
+
+const logSupabaseError = (error) => {
+  if (error) {
+    console.error(error.message, error.details, error.hint, error.code);
+  }
+};
 
 /**
  * Strips any keys from a payload that are not in SAFE_PRODUCT_COLUMNS.
@@ -135,7 +142,7 @@ export const createProduct = async (productData) => {
     if (error) throw error;
     return { product: data, error: null };
   } catch (error) {
-    console.error('Create product error:', error);
+    logSupabaseError(error);
     return { product: null, error: error.message };
   }
 };
@@ -158,7 +165,7 @@ export const updateProduct = async (productId, updates) => {
     if (error) throw error;
     return { product: data, error: null };
   } catch (error) {
-    console.error('Update product error:', error);
+    logSupabaseError(error);
     return { product: null, error: error.message };
   }
 };
